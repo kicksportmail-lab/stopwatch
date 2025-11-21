@@ -75,9 +75,9 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
   const getAnalogPosition = () => {
     const totalSeconds = time / 1000;
     const angle = (totalSeconds % 60) * 6 - 90; // 6 degrees per second, -90 to start at top
-    const radius = 180;
-    const centerX = 200;
-    const centerY = 200;
+    const radius = 130;
+    const centerX = 150;
+    const centerY = 150;
     
     const x = centerX + radius * Math.cos((angle * Math.PI) / 180);
     const y = centerY + radius * Math.sin((angle * Math.PI) / 180);
@@ -88,17 +88,17 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
   const { x, y } = getAnalogPosition();
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6 animate-fade-in">
+    <div className="w-full max-w-md mx-auto space-y-6 animate-fade-in">
       <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-8">
         <div className="text-center space-y-8">
           {/* Analog Clock with Digital Display */}
-          <div className="relative flex items-center justify-center w-full h-[420px]">
-            <svg width="400" height="400" className="absolute">
+          <div className="relative flex items-center justify-center w-full h-[320px]">
+            <svg width="300" height="300" className="absolute">
               {/* Outer circle */}
               <circle
-                cx="200"
-                cy="200"
-                r="190"
+                cx="150"
+                cy="150"
+                r="140"
                 fill="none"
                 stroke="hsl(var(--border))"
                 strokeWidth="2"
@@ -108,10 +108,10 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
               {/* Hour markers */}
               {[...Array(12)].map((_, i) => {
                 const angle = (i * 30 - 90) * (Math.PI / 180);
-                const x1 = 200 + 175 * Math.cos(angle);
-                const y1 = 200 + 175 * Math.sin(angle);
-                const x2 = 200 + 190 * Math.cos(angle);
-                const y2 = 200 + 190 * Math.sin(angle);
+                const x1 = 150 + 127 * Math.cos(angle);
+                const y1 = 150 + 127 * Math.sin(angle);
+                const x2 = 150 + 140 * Math.cos(angle);
+                const y2 = 150 + 140 * Math.sin(angle);
                 
                 return (
                   <line
@@ -121,7 +121,7 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
                     x2={x2}
                     y2={y2}
                     stroke="hsl(var(--primary))"
-                    strokeWidth="3"
+                    strokeWidth="2"
                     opacity="0.5"
                   />
                 );
@@ -131,7 +131,7 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
               <circle
                 cx={x}
                 cy={y}
-                r="10"
+                r="8"
                 fill="hsl(var(--primary))"
                 className={`${isRunning ? 'drop-shadow-[0_0_20px_hsl(var(--primary))]' : ''}`}
                 style={{ 
@@ -144,7 +144,7 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
               <circle
                 cx={x}
                 cy={y}
-                r="16"
+                r="13"
                 fill="none"
                 stroke="hsl(var(--primary))"
                 strokeWidth="2"
@@ -155,14 +155,14 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
             
             {/* Digital Display - Centered */}
             <div className="relative z-10 flex flex-col items-center">
-              <div className={`text-7xl font-bold tracking-tight ${isRunning ? 'animate-pulse-glow' : ''}`}>
+              <div className={`text-6xl font-bold tracking-tight ${isRunning ? 'animate-pulse-glow' : ''}`}>
                 <div className="flex items-baseline">
                   <span className="text-foreground">{minutes}</span>
                   <span className="text-primary mx-1">:</span>
                   <span className="text-foreground">{seconds}</span>
                 </div>
               </div>
-              <div className="text-4xl text-primary font-bold mt-2">
+              <div className="text-3xl text-primary font-bold mt-1">
                 {milliseconds}
               </div>
             </div>
