@@ -71,17 +71,96 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
 
   const { minutes, seconds, milliseconds } = formatTime(time);
 
+  // Calculate dot position on the circle (completes rotation every 60 seconds)
+  const getAnalogPosition = () => {
+    const totalSeconds = time / 1000;
+    const angle = (totalSeconds % 60) * 6 - 90; // 6 degrees per second, -90 to start at top
+    const radius = 140;
+    const centerX = 180;
+    const centerY = 180;
+    
+    const x = centerX + radius * Math.cos((angle * Math.PI) / 180);
+    const y = centerY + radius * Math.sin((angle * Math.PI) / 180);
+    
+    return { x, y, angle: angle + 90 };
+  };
+
+  const { x, y } = getAnalogPosition();
+
   return (
     <div className="w-full max-w-md mx-auto space-y-6 animate-fade-in">
       <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-8">
         <div className="text-center space-y-8">
-          <div className="relative">
-            <div className={`text-7xl font-bold tracking-tight ${isRunning ? 'animate-pulse-glow' : ''}`}>
-              <span className="text-foreground">{minutes}</span>
-              <span className="text-primary">:</span>
-              <span className="text-foreground">{seconds}</span>
-              <span className="text-primary">:</span>
-              <span className="text-muted-foreground text-5xl">{milliseconds}</span>
+          <div className="relative flex items-center justify-center">
+            {/* Analog Circle Background */}
+            <svg width="360" height="360" className="absolute">
+              {/* Outer circle */}
+              <circle
+                cx="180"
+                cy="180"
+                r="145"
+                fill="none"
+                stroke="hsl(var(--border))"
+                strokeWidth="2"
+                opacity="0.3"
+              />
+              
+              {/* Hour markers */}
+              {[...Array(12)].map((_, i) => {
+                const angle = (i * 30 - 90) * (Math.PI / 180);
+                const x1 = 180 + 135 * Math.cos(angle);
+                const y1 = 180 + 135 * Math.sin(angle);
+                const x2 = 180 + 145 * Math.cos(angle);
+                const y2 = 180 + 145 * Math.sin(angle);
+                
+                return (
+                  <line
+                    key={i}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="2"
+                    opacity="0.5"
+                  />
+                );
+              })}
+              
+              {/* Moving dot */}
+              <circle
+                cx={x}
+                cy={y}
+                r="8"
+                fill="hsl(var(--primary))"
+                className={`${isRunning ? 'drop-shadow-[0_0_12px_hsl(var(--primary))]' : ''}`}
+                style={{ transition: 'all 0.01s linear' }}
+              />
+              
+              {/* Trail effect */}
+              <circle
+                cx={x}
+                cy={y}
+                r="12"
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="2"
+                opacity="0.3"
+              />
+            </svg>
+            
+            {/* Digital Display in Center */}
+            <div className={`relative z-10 text-6xl font-bold tracking-tight ${isRunning ? 'animate-pulse-glow' : ''}`}>
+              <div className="flex flex-col items-center">
+                <div className="flex items-baseline">
+                  <span className="text-foreground">{minutes}</span>
+                  <span className="text-primary mx-1">:</span>
+                  <span className="text-foreground">{seconds}</span>
+                </div>
+                <div className="text-3xl text-primary mt-1">
+                  {milliseconds}
+                </div>
+              </div>
             </div>
           </div>
 
