@@ -15,11 +15,37 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
   const [isRunning, setIsRunning] = useState(false);
   const [laps, setLaps] = useState<LapTime[]>([]);
   const intervalRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
 
+  // Load persisted state on mount
+  useEffect(() => {
+    const savedState = localStorage.getItem('stopwatch-state');
+    if (savedState) {
+      const { startTimestamp, accumulatedTime, isRunning: savedIsRunning, laps: savedLaps } = JSON.parse(savedState);
+      
+      if (savedIsRunning && startTimestamp) {
+        const elapsed = Date.now() - startTimestamp;
+        setTime(accumulatedTime + elapsed);
+        setIsRunning(true);
+        startTimeRef.current = startTimestamp;
+      } else {
+        setTime(accumulatedTime);
+      }
+      
+      setLaps(savedLaps || []);
+    }
+  }, []);
+
+  // Main timer effect
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = window.setInterval(() => {
-        setTime((prevTime) => prevTime + 10);
+        if (startTimeRef.current) {
+          const elapsed = Date.now() - startTimeRef.current;
+          const savedState = localStorage.getItem('stopwatch-state');
+          const accumulatedTime = savedState ? JSON.parse(savedState).accumulatedTime : 0;
+          setTime(accumulatedTime + elapsed);
+        }
       }, 10);
     } else if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -31,6 +57,17 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
       }
     };
   }, [isRunning]);
+
+  // Persist state changes
+  useEffect(() => {
+    const state = {
+      startTimestamp: startTimeRef.current,
+      accumulatedTime: startTimeRef.current ? time - (Date.now() - startTimeRef.current) : time,
+      isRunning,
+      laps
+    };
+    localStorage.setItem('stopwatch-state', JSON.stringify(state));
+  }, [time, isRunning, laps]);
 
   const formatTime = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
@@ -45,6 +82,11 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
   };
 
   const handleStartStop = () => {
+    if (!isRunning) {
+      startTimeRef.current = Date.now();
+    } else {
+      startTimeRef.current = null;
+    }
     setIsRunning(!isRunning);
   };
 
@@ -59,6 +101,8 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
     setIsRunning(false);
     setTime(0);
     setLaps([]);
+    startTimeRef.current = null;
+    localStorage.removeItem('stopwatch-state');
   };
 
   const handleLap = () => {
