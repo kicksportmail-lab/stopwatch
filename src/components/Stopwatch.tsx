@@ -70,11 +70,13 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
   }, [time, isRunning, laps]);
 
   const formatTime = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.floor((ms % 3600000) / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     const milliseconds = Math.floor((ms % 1000) / 10);
 
     return {
+      hours: hours.toString().padStart(2, "0"),
       minutes: minutes.toString().padStart(2, "0"),
       seconds: seconds.toString().padStart(2, "0"),
       milliseconds: milliseconds.toString().padStart(2, "0"),
@@ -113,7 +115,7 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
     }
   };
 
-  const { minutes, seconds, milliseconds } = formatTime(time);
+  const { hours, minutes, seconds, milliseconds } = formatTime(time);
 
   // Calculate dot position on the circle (completes rotation every 60 seconds)
   const getAnalogPosition = () => {
@@ -199,14 +201,16 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
             
             {/* Digital Display - Centered */}
             <div className="relative z-10 flex flex-col items-center">
-              <div className={`text-6xl font-bold tracking-tight ${isRunning ? 'animate-pulse-glow' : ''}`}>
+              <div className={`text-5xl font-bold tracking-tight ${isRunning ? 'animate-pulse-glow' : ''}`}>
                 <div className="flex items-baseline">
+                  <span className="text-foreground">{hours}</span>
+                  <span className="text-primary mx-1">:</span>
                   <span className="text-foreground">{minutes}</span>
                   <span className="text-primary mx-1">:</span>
                   <span className="text-foreground">{seconds}</span>
                 </div>
               </div>
-              <div className="text-3xl text-primary font-bold mt-1">
+              <div className="text-2xl text-primary font-bold mt-1">
                 {milliseconds}
               </div>
             </div>
