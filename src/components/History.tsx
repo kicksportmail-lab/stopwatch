@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
+import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LapTime {
@@ -53,6 +53,39 @@ export const History = ({
     const shortest = Math.min(...times);
     
     return { total, average, longest, shortest };
+  };
+
+  const exportToJSON = () => {
+    const dataStr = JSON.stringify(sessions, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `stopwatch-history-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToCSV = () => {
+    const headers = ["Date", "Time", "Laps Count"];
+    const rows = sessions.map(session => [
+      formatDate(session.date),
+      formatTime(session.time),
+      session.laps.length
+    ]);
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.join(","))
+    ].join("\n");
+    
+    const dataBlob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `stopwatch-history-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const stats = calculateStats();
@@ -112,15 +145,35 @@ export const History = ({
       <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-foreground">History</h2>
-          <Button
-            onClick={onClearHistory}
-            variant="destructive"
-            size="sm"
-            className="gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Clear All
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={exportToJSON}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              JSON
+            </Button>
+            <Button
+              onClick={exportToCSV}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
+            <Button
+              onClick={onClearHistory}
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear All
+            </Button>
+          </div>
         </div>
 
       <ScrollArea className="h-[500px] pr-4">
