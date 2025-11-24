@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface LapTime {
   id: number;
@@ -55,6 +56,30 @@ export const History = ({
     return { total, average, longest, shortest };
   };
 
+  const prepareChartData = () => {
+    return sessions
+      .slice()
+      .reverse()
+      .map((session, index) => ({
+        name: `Session ${sessions.length - index}`,
+        time: Math.round(session.time / 1000), // Convert to seconds for better readability
+        date: formatDate(session.date),
+      }));
+  };
+
+  const formatChartTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    }
+    return `${secs}s`;
+  };
+
   const exportToJSON = () => {
     const dataStr = JSON.stringify(sessions, null, 2);
     const dataBlob = new Blob([dataStr], { type: "application/json" });
@@ -89,6 +114,7 @@ export const History = ({
   };
 
   const stats = calculateStats();
+  const chartData = prepareChartData();
 
   if (sessions.length === 0) {
     return (
@@ -137,6 +163,51 @@ export const History = ({
               </div>
               <div className="text-2xl font-bold text-foreground font-mono">{formatTime(stats.shortest)}</div>
             </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Chart Visualization */}
+      {sessions.length > 1 && (
+        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Session Duration Trend
+          </h3>
+          <div className="h-[250px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
+                <XAxis 
+                  dataKey="name" 
+                  className="text-xs"
+                  stroke="hsl(var(--muted-foreground))"
+                />
+                <YAxis 
+                  tickFormatter={formatChartTime}
+                  className="text-xs"
+                  stroke="hsl(var(--muted-foreground))"
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--secondary))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    color: "hsl(var(--foreground))"
+                  }}
+                  formatter={(value: number) => [formatChartTime(value), "Duration"]}
+                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="time" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </Card>
       )}
