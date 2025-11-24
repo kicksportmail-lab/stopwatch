@@ -1,8 +1,15 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3, Download } from "lucide-react";
+import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3, Download, Filter, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface LapTime {
   id: number;
@@ -24,6 +31,57 @@ export const History = ({
   sessions: HistorySession[];
   onClearHistory: () => void;
 }) => {
+  const [dateFrom, setDateFrom] = useState<Date>();
+  const [dateTo, setDateTo] = useState<Date>();
+  const [minDuration, setMinDuration] = useState<string>("");
+  const [maxDuration, setMaxDuration] = useState<string>("");
+  const [minLaps, setMinLaps] = useState<string>("");
+  const [maxLaps, setMaxLaps] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const parseTimeInput = (timeStr: string): number => {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':');
+    if (parts.length === 3) {
+      const [h, m, s] = parts.map(Number);
+      return (h * 3600 + m * 60 + s) * 1000;
+    }
+    return 0;
+  };
+
+  const filteredSessions = sessions.filter(session => {
+    const sessionDate = new Date(session.date);
+    
+    // Date range filter
+    if (dateFrom && sessionDate < dateFrom) return false;
+    if (dateTo && sessionDate > dateTo) return false;
+    
+    // Duration filter
+    const minDur = parseTimeInput(minDuration);
+    const maxDur = parseTimeInput(maxDuration);
+    if (minDur > 0 && session.time < minDur) return false;
+    if (maxDur > 0 && session.time > maxDur) return false;
+    
+    // Lap count filter
+    const minL = minLaps ? parseInt(minLaps) : 0;
+    const maxL = maxLaps ? parseInt(maxLaps) : Infinity;
+    if (minL > 0 && session.laps.length < minL) return false;
+    if (maxL < Infinity && session.laps.length > maxL) return false;
+    
+    return true;
+  });
+
+  const clearFilters = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setMinDuration("");
+    setMaxDuration("");
+    setMinLaps("");
+    setMaxLaps("");
+  };
+
+  const hasActiveFilters = dateFrom || dateTo || minDuration || maxDuration || minLaps || maxLaps;
+
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / 3600000);
     const minutes = Math.floor((ms % 3600000) / 60000);
@@ -45,10 +103,10 @@ export const History = ({
   };
 
   const calculateStats = () => {
-    if (sessions.length === 0) return null;
+    if (filteredSessions.length === 0) return null;
     
-    const times = sessions.map(s => s.time);
-    const total = sessions.length;
+    const times = filteredSessions.map(s => s.time);
+    const total = filteredSessions.length;
     const average = times.reduce((a, b) => a + b, 0) / total;
     const longest = Math.max(...times);
     const shortest = Math.min(...times);
@@ -57,11 +115,11 @@ export const History = ({
   };
 
   const prepareChartData = () => {
-    return sessions
+    return filteredSessions
       .slice()
       .reverse()
       .map((session, index) => ({
-        name: `Session ${sessions.length - index}`,
+        name: `Session ${filteredSessions.length - index}`,
         time: Math.round(session.time / 1000), // Convert to seconds for better readability
         date: formatDate(session.date),
       }));
@@ -127,6 +185,146 @@ export const History = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {/* Filter Section */}
+      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
+        <div className="flex justify-between items-center">
+          <Button
+            onClick={() => setShowFilters(!showFilters)}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <Filter className="h-4 w-4" />
+            {showFilters ? "Hide Filters" : "Show Filters"}
+            {hasActiveFilters && (
+              <span className="ml-1 bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                !
+              </span>
+            )}
+          </Button>
+          {hasActiveFilters && (
+            <Button
+              onClick={clearFilters}
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+              Clear Filters
+            </Button>
+          )}
+        </div>
+
+        {showFilters && (
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Date Range Filters */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Date From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateFrom && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {dateFrom ? format(dateFrom, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={dateFrom}
+                    onSelect={setDateFrom}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Date To</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateTo && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={dateTo}
+                    onSelect={setDateTo}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Duration Filters */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Min Duration (HH:MM:SS)</Label>
+              <Input
+                placeholder="00:00:00"
+                value={minDuration}
+                onChange={(e) => setMinDuration(e.target.value)}
+                className="font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Max Duration (HH:MM:SS)</Label>
+              <Input
+                placeholder="00:00:00"
+                value={maxDuration}
+                onChange={(e) => setMaxDuration(e.target.value)}
+                className="font-mono"
+              />
+            </div>
+
+            {/* Lap Count Filters */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Min Laps</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={minLaps}
+                onChange={(e) => setMinLaps(e.target.value)}
+                min="0"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Max Laps</Label>
+              <Input
+                type="number"
+                placeholder="Any"
+                value={maxLaps}
+                onChange={(e) => setMaxLaps(e.target.value)}
+                min="0"
+              />
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {filteredSessions.length === 0 && sessions.length > 0 && (
+        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-8 text-center">
+          <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">No sessions match your filters. Try adjusting them.</p>
+        </Card>
+      )}
       {/* Statistics Summary */}
       {stats && (
         <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
@@ -168,7 +366,7 @@ export const History = ({
       )}
 
       {/* Chart Visualization */}
-      {sessions.length > 1 && (
+      {filteredSessions.length > 1 && (
         <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
@@ -247,9 +445,9 @@ export const History = ({
           </div>
         </div>
 
-      <ScrollArea className="h-[500px] pr-4">
-        <div className="space-y-4">
-          {sessions.map((session) => (
+        <ScrollArea className="h-[500px] pr-4">
+          <div className="space-y-4">
+            {filteredSessions.map((session) => (
             <Card
               key={session.id}
               className="bg-secondary/30 border-border/30 p-4 hover:bg-secondary/50 transition-colors"
