@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar } from "lucide-react";
+import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LapTime {
@@ -43,6 +43,20 @@ export const History = ({
     }).format(date);
   };
 
+  const calculateStats = () => {
+    if (sessions.length === 0) return null;
+    
+    const times = sessions.map(s => s.time);
+    const total = sessions.length;
+    const average = times.reduce((a, b) => a + b, 0) / total;
+    const longest = Math.max(...times);
+    const shortest = Math.min(...times);
+    
+    return { total, average, longest, shortest };
+  };
+
+  const stats = calculateStats();
+
   if (sessions.length === 0) {
     return (
       <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-8 text-center animate-fade-in">
@@ -53,19 +67,61 @@ export const History = ({
   }
 
   return (
-    <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground">History</h2>
-        <Button
-          onClick={onClearHistory}
-          variant="destructive"
-          size="sm"
-          className="gap-2"
-        >
-          <Trash2 className="h-4 w-4" />
-          Clear All
-        </Button>
-      </div>
+    <div className="space-y-4 animate-fade-in">
+      {/* Statistics Summary */}
+      {stats && (
+        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Statistics
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-secondary/30 rounded-lg p-4 border border-border/30">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <Calendar className="h-4 w-4" />
+                Total Sessions
+              </div>
+              <div className="text-2xl font-bold text-foreground font-mono">{stats.total}</div>
+            </div>
+            <div className="bg-secondary/30 rounded-lg p-4 border border-border/30">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <Clock className="h-4 w-4" />
+                Average Time
+              </div>
+              <div className="text-2xl font-bold text-foreground font-mono">{formatTime(stats.average)}</div>
+            </div>
+            <div className="bg-secondary/30 rounded-lg p-4 border border-border/30">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <TrendingUp className="h-4 w-4" />
+                Longest
+              </div>
+              <div className="text-2xl font-bold text-foreground font-mono">{formatTime(stats.longest)}</div>
+            </div>
+            <div className="bg-secondary/30 rounded-lg p-4 border border-border/30">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                <TrendingDown className="h-4 w-4" />
+                Shortest
+              </div>
+              <div className="text-2xl font-bold text-foreground font-mono">{formatTime(stats.shortest)}</div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* History List */}
+      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-foreground">History</h2>
+          <Button
+            onClick={onClearHistory}
+            variant="destructive"
+            size="sm"
+            className="gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear All
+          </Button>
+        </div>
 
       <ScrollArea className="h-[500px] pr-4">
         <div className="space-y-4">
@@ -110,6 +166,7 @@ export const History = ({
           ))}
         </div>
       </ScrollArea>
-    </Card>
+      </Card>
+    </div>
   );
 };
