@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3, Download, Filter, X } from "lucide-react";
+import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3, Download, Filter, X, Edit2, Check } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useState } from "react";
@@ -22,14 +22,17 @@ interface HistorySession {
   time: number;
   laps: LapTime[];
   date: string;
+  name?: string;
 }
 
 export const History = ({
   sessions,
   onClearHistory,
+  onUpdateSessionName,
 }: {
   sessions: HistorySession[];
   onClearHistory: () => void;
+  onUpdateSessionName: (sessionId: string, name: string) => void;
 }) => {
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
@@ -38,6 +41,8 @@ export const History = ({
   const [minLaps, setMinLaps] = useState<string>("");
   const [maxLaps, setMaxLaps] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const parseTimeInput = (timeStr: string): number => {
     if (!timeStr) return 0;
@@ -47,6 +52,22 @@ export const History = ({
       return (h * 3600 + m * 60 + s) * 1000;
     }
     return 0;
+  };
+
+  const handleEditSession = (sessionId: string, currentName?: string) => {
+    setEditingSessionId(sessionId);
+    setEditingName(currentName || "");
+  };
+
+  const handleSaveName = (sessionId: string) => {
+    onUpdateSessionName(sessionId, editingName);
+    setEditingSessionId(null);
+    setEditingName("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSessionId(null);
+    setEditingName("");
   };
 
   const filteredSessions = sessions.filter(session => {
@@ -453,7 +474,54 @@ export const History = ({
               className="bg-secondary/30 border-border/30 p-4 hover:bg-secondary/50 transition-colors"
             >
               <div className="flex justify-between items-start mb-3">
-                <div>
+                <div className="flex-1">
+                  {editingSessionId === session.id ? (
+                    <div className="flex items-center gap-2 mb-2">
+                      <Input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        placeholder="Session name"
+                        className="h-8 text-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleSaveName(session.id);
+                          } else if (e.key === "Escape") {
+                            handleCancelEdit();
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveName(session.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCancelEdit}
+                        className="h-8 w-8 p-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    session.name && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="text-lg font-semibold text-foreground">{session.name}</h4>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditSession(session.id, session.name)}
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )
+                  )}
                   <div className="text-2xl font-bold font-mono text-primary">
                     {formatTime(session.time)}
                   </div>
@@ -462,8 +530,21 @@ export const History = ({
                     {formatDate(session.date)}
                   </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {session.laps.length} lap{session.laps.length !== 1 ? "s" : ""}
+                <div className="flex flex-col items-end gap-2">
+                  <div className="text-sm text-muted-foreground">
+                    {session.laps.length} lap{session.laps.length !== 1 ? "s" : ""}
+                  </div>
+                  {!session.name && editingSessionId !== session.id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEditSession(session.id)}
+                      className="h-7 text-xs gap-1"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                      Add Name
+                    </Button>
+                  )}
                 </div>
               </div>
 
