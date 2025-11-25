@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Play, Pause, RotateCcw, Flag } from "lucide-react";
@@ -13,73 +13,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useStopwatchSync } from "@/hooks/useStopwatchSync";
 
-interface LapTime {
-  id: number;
-  time: number;
-  split: number;
-}
-
-export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: number, laps: LapTime[], name?: string) => void }) => {
-  const [time, setTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [laps, setLaps] = useState<LapTime[]>([]);
+export const Stopwatch = () => {
+  const { time, isRunning, laps, handleStartStop, handleReset, handleLap } = useStopwatchSync();
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [sessionName, setSessionName] = useState("");
-  const intervalRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-
-  // Load persisted state on mount
-  useEffect(() => {
-    const savedState = localStorage.getItem('stopwatch-state');
-    if (savedState) {
-      const { startTimestamp, accumulatedTime, isRunning: savedIsRunning, laps: savedLaps } = JSON.parse(savedState);
-      
-      if (savedIsRunning && startTimestamp) {
-        const elapsed = Date.now() - startTimestamp;
-        setTime(accumulatedTime + elapsed);
-        setIsRunning(true);
-        startTimeRef.current = startTimestamp;
-      } else {
-        setTime(accumulatedTime);
-      }
-      
-      setLaps(savedLaps || []);
-    }
-  }, []);
-
-  // Main timer effect
-  useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = window.setInterval(() => {
-        if (startTimeRef.current) {
-          const elapsed = Date.now() - startTimeRef.current;
-          const savedState = localStorage.getItem('stopwatch-state');
-          const accumulatedTime = savedState ? JSON.parse(savedState).accumulatedTime : 0;
-          setTime(accumulatedTime + elapsed);
-        }
-      }, 10);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isRunning]);
-
-  // Persist state changes
-  useEffect(() => {
-    const state = {
-      startTimestamp: startTimeRef.current,
-      accumulatedTime: startTimeRef.current ? time - (Date.now() - startTimeRef.current) : time,
-      isRunning,
-      laps
-    };
-    localStorage.setItem('stopwatch-state', JSON.stringify(state));
-  }, [time, isRunning, laps]);
 
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / 3600000);
@@ -95,16 +34,7 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
     };
   };
 
-  const handleStartStop = () => {
-    if (!isRunning) {
-      startTimeRef.current = Date.now();
-    } else {
-      startTimeRef.current = null;
-    }
-    setIsRunning(!isRunning);
-  };
-
-  const handleReset = () => {
+  const handleResetClick = () => {
     if (time > 0) {
       setShowNameDialog(true);
     } else {
@@ -112,19 +42,12 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
     }
   };
 
-  const resetStopwatch = (name?: string) => {
-    if (time > 0) {
-      onSessionComplete(time, laps, name);
-      toast({
-        title: "Session saved",
-        description: name ? `Session "${name}" saved to history.` : "Your stopwatch session has been saved to history.",
-      });
-    }
-    setIsRunning(false);
-    setTime(0);
-    setLaps([]);
-    startTimeRef.current = null;
-    localStorage.removeItem('stopwatch-state');
+  const resetStopwatch = async (name?: string) => {
+    await handleReset(name);
+    toast({
+      title: "Session saved",
+      description: name ? `Session "${name}" saved to history.` : "Your stopwatch session has been saved to history.",
+    });
     setShowNameDialog(false);
     setSessionName("");
   };
@@ -135,14 +58,6 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
 
   const handleSkipNaming = () => {
     resetStopwatch();
-  };
-
-  const handleLap = () => {
-    if (time > 0) {
-      const previousLapTime = laps.length > 0 ? laps[laps.length - 1].time : 0;
-      const split = time - previousLapTime;
-      setLaps([...laps, { id: laps.length + 1, time, split }]);
-    }
   };
 
   const { hours, minutes, seconds, milliseconds } = formatTime(time);
@@ -268,7 +183,7 @@ export const Stopwatch = ({ onSessionComplete }: { onSessionComplete: (time: num
               </Button>
 
               <Button
-                onClick={handleReset}
+                onClick={handleResetClick}
                 disabled={time === 0 && !isRunning}
                 size="lg"
                 variant="outline"
