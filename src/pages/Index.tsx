@@ -15,6 +15,7 @@ interface HistorySession {
   time: number;
   laps: LapTime[];
   date: string;
+  name?: string;
 }
 
 const Index = () => {
@@ -27,15 +28,24 @@ const Index = () => {
     }
   }, []);
 
-  const handleSessionComplete = (time: number, laps: LapTime[]) => {
+  const handleSessionComplete = (time: number, laps: LapTime[], name?: string) => {
     const newSession: HistorySession = {
       id: Date.now().toString(),
       time,
       laps,
       date: new Date().toISOString(),
+      name,
     };
 
     const updatedHistory = [newSession, ...history];
+    setHistory(updatedHistory);
+    localStorage.setItem("stopwatch-history", JSON.stringify(updatedHistory));
+  };
+
+  const handleUpdateSessionName = (sessionId: string, name: string) => {
+    const updatedHistory = history.map(session =>
+      session.id === sessionId ? { ...session, name } : session
+    );
     setHistory(updatedHistory);
     localStorage.setItem("stopwatch-history", JSON.stringify(updatedHistory));
   };
@@ -73,7 +83,11 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="history" className="mt-6">
-            <History sessions={history} onClearHistory={handleClearHistory} />
+            <History 
+              sessions={history} 
+              onClearHistory={handleClearHistory}
+              onUpdateSessionName={handleUpdateSessionName}
+            />
           </TabsContent>
         </Tabs>
       </div>
