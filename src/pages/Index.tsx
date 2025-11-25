@@ -1,59 +1,11 @@
-import { useState, useEffect } from "react";
 import { Stopwatch } from "@/components/Stopwatch";
 import { History } from "@/components/History";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Timer } from "lucide-react";
-
-interface LapTime {
-  id: number;
-  time: number;
-  split: number;
-}
-
-interface HistorySession {
-  id: string;
-  time: number;
-  laps: LapTime[];
-  date: string;
-  name?: string;
-}
+import { useHistorySync } from "@/hooks/useHistorySync";
 
 const Index = () => {
-  const [history, setHistory] = useState<HistorySession[]>([]);
-
-  useEffect(() => {
-    const savedHistory = localStorage.getItem("stopwatch-history");
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
-    }
-  }, []);
-
-  const handleSessionComplete = (time: number, laps: LapTime[], name?: string) => {
-    const newSession: HistorySession = {
-      id: Date.now().toString(),
-      time,
-      laps,
-      date: new Date().toISOString(),
-      name,
-    };
-
-    const updatedHistory = [newSession, ...history];
-    setHistory(updatedHistory);
-    localStorage.setItem("stopwatch-history", JSON.stringify(updatedHistory));
-  };
-
-  const handleUpdateSessionName = (sessionId: string, name: string) => {
-    const updatedHistory = history.map(session =>
-      session.id === sessionId ? { ...session, name } : session
-    );
-    setHistory(updatedHistory);
-    localStorage.setItem("stopwatch-history", JSON.stringify(updatedHistory));
-  };
-
-  const handleClearHistory = () => {
-    setHistory([]);
-    localStorage.removeItem("stopwatch-history");
-  };
+  const { history, handleUpdateSessionName, handleClearHistory } = useHistorySync();
 
   return (
     <div className="min-h-screen bg-gradient-primary">
@@ -65,7 +17,7 @@ const Index = () => {
               Stopwatch
             </h1>
           </div>
-          <p className="text-muted-foreground">Track your time with precision</p>
+          <p className="text-muted-foreground">Track your time with precision - synced across all your devices</p>
         </div>
 
         <Tabs defaultValue="stopwatch" className="w-full">
@@ -79,7 +31,7 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="stopwatch" className="mt-6">
-            <Stopwatch onSessionComplete={handleSessionComplete} />
+            <Stopwatch />
           </TabsContent>
 
           <TabsContent value="history" className="mt-6">

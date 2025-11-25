@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      stopwatch_sessions: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          laps: Json
+          name: string | null
+          time: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          laps?: Json
+          name?: string | null
+          time: number
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          laps?: Json
+          name?: string | null
+          time?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stopwatch_state: {
+        Row: {
+          accumulated_time: number
+          id: string
+          is_running: boolean
+          laps: Json
+          start_timestamp: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accumulated_time?: number
+          id?: string
+          is_running?: boolean
+          laps?: Json
+          start_timestamp?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          accumulated_time?: number
+          id?: string
+          is_running?: boolean
+          laps?: Json
+          start_timestamp?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
