@@ -1,5 +1,6 @@
 import { Stopwatch } from "@/components/Stopwatch";
 import { History } from "@/components/History";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Timer } from "lucide-react";
 import { useHistorySync } from "@/hooks/useHistorySync";
@@ -9,6 +10,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-primary">
+      <InstallPrompt />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex items-center justify-center gap-3 mb-2">
