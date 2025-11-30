@@ -26,46 +26,55 @@ export const useStopwatchSync = () => {
   const startTimeRef = useRef<number | null>(null);
   const accumulatedTimeRef = useRef(0);
   const isUpdatingRef = useRef(false);
+  const lastUpdateTime = useRef(0);
 
   // Load initial state from database
   useEffect(() => {
     const loadState = async () => {
-      const { data, error } = await supabase
+      // First try to get existing state
+      const { data: existingState, error } = await supabase
         .from('stopwatch_state')
         .select('*')
         .limit(1)
         .maybeSingle();
 
-      if (data && !error) {
-        setStateId(data.id);
-        accumulatedTimeRef.current = data.accumulated_time;
-        
-        if (data.is_running && data.start_timestamp) {
-          const elapsed = Date.now() - data.start_timestamp;
-          setTime(data.accumulated_time + elapsed);
-          setIsRunning(true);
-          startTimeRef.current = data.start_timestamp;
-        } else {
-          setTime(data.accumulated_time);
-          setIsRunning(false);
-        }
-        
-        setLaps(Array.isArray(data.laps) ? (data.laps as unknown as LapTime[]) : []);
-      } else {
-        // Create initial state
+      let stateData = existingState;
+
+      // If no state exists, create one with a known ID
+      if (!existingState || error) {
         const { data: newState, error: insertError } = await supabase
           .from('stopwatch_state')
-          .insert({
+          .upsert({
+            id: '00000000-0000-0000-0000-000000000001', // Fixed ID so all devices use same state
             accumulated_time: 0,
             is_running: false,
-            laps: []
+            laps: [],
+            start_timestamp: null
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
           })
           .select()
           .single();
 
-        if (newState && !insertError) {
-          setStateId(newState.id);
+        stateData = newState || null;
+      }
+
+      if (stateData) {
+        setStateId(stateData.id);
+        accumulatedTimeRef.current = stateData.accumulated_time;
+        
+        if (stateData.is_running && stateData.start_timestamp) {
+          const elapsed = Date.now() - stateData.start_timestamp;
+          setTime(stateData.accumulated_time + elapsed);
+          setIsRunning(true);
+          startTimeRef.current = stateData.start_timestamp;
+        } else {
+          setTime(stateData.accumulated_time);
+          setIsRunning(false);
         }
+        
+        setLaps(Array.isArray(stateData.laps) ? (stateData.laps as unknown as LapTime[]) : []);
       }
     };
 
@@ -92,11 +101,16 @@ export const useStopwatchSync = () => {
     };
   }, [isRunning]);
 
-  // Sync state to database
+  // Sync state to database with debouncing
   const syncState = async (state: Partial<StopwatchState>) => {
-    if (!stateId || isUpdatingRef.current) return;
-
+    if (!stateId) return;
+    
+    const now = Date.now();
+    // Prevent rapid-fire updates (debounce)
+    if (now - lastUpdateTime.current < 50) return;
+    
     isUpdatingRef.current = true;
+    lastUpdateTime.current = now;
 
     const updateData: any = {};
     
@@ -120,7 +134,7 @@ export const useStopwatchSync = () => {
 
     setTimeout(() => {
       isUpdatingRef.current = false;
-    }, 100);
+    }, 200);
   };
 
   // Listen to realtime changes
@@ -138,21 +152,32 @@ export const useStopwatchSync = () => {
           filter: `id=eq.${stateId}`
         },
         (payload) => {
+          // Ignore updates we just made
           if (isUpdatingRef.current) return;
+          
+          const now = Date.now();
+          // Ignore if we just updated
+          if (now - lastUpdateTime.current < 100) return;
 
           const data = payload.new as any;
           
           accumulatedTimeRef.current = data.accumulated_time;
           
           if (data.is_running && data.start_timestamp) {
-            const elapsed = Date.now() - data.start_timestamp;
-            setTime(data.accumulated_time + elapsed);
-            setIsRunning(true);
-            startTimeRef.current = data.start_timestamp;
+            // Only update if not already running or if timestamp changed
+            if (!isRunning || startTimeRef.current !== data.start_timestamp) {
+              const elapsed = Date.now() - data.start_timestamp;
+              setTime(data.accumulated_time + elapsed);
+              setIsRunning(true);
+              startTimeRef.current = data.start_timestamp;
+            }
           } else {
-            setTime(data.accumulated_time);
-            setIsRunning(false);
-            startTimeRef.current = null;
+            // Stopwatch was stopped remotely
+            if (isRunning) {
+              setTime(data.accumulated_time);
+              setIsRunning(false);
+              startTimeRef.current = null;
+            }
           }
           
           setLaps(Array.isArray(data.laps) ? (data.laps as unknown as LapTime[]) : []);
