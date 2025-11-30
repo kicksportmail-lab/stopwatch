@@ -24,6 +24,7 @@ export const useStopwatchSync = () => {
   const [stateId, setStateId] = useState<string | null>(null);
   const intervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const accumulatedTimeRef = useRef(0);
   const isUpdatingRef = useRef(false);
 
   // Load initial state from database
@@ -37,6 +38,7 @@ export const useStopwatchSync = () => {
 
       if (data && !error) {
         setStateId(data.id);
+        accumulatedTimeRef.current = data.accumulated_time;
         
         if (data.is_running && data.start_timestamp) {
           const elapsed = Date.now() - data.start_timestamp;
@@ -45,6 +47,7 @@ export const useStopwatchSync = () => {
           startTimeRef.current = data.start_timestamp;
         } else {
           setTime(data.accumulated_time);
+          setIsRunning(false);
         }
         
         setLaps(Array.isArray(data.laps) ? (data.laps as unknown as LapTime[]) : []);
@@ -71,21 +74,20 @@ export const useStopwatchSync = () => {
 
   // Main timer effect
   useEffect(() => {
-    if (isRunning) {
+    if (isRunning && startTimeRef.current) {
       intervalRef.current = window.setInterval(() => {
-        if (startTimeRef.current) {
-          const elapsed = Date.now() - startTimeRef.current;
-          const accumulated = time - elapsed;
-          setTime(accumulated + elapsed);
-        }
+        const elapsed = Date.now() - startTimeRef.current!;
+        setTime(accumulatedTimeRef.current + elapsed);
       }, 10);
     } else if (intervalRef.current) {
       clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [isRunning]);
@@ -140,6 +142,8 @@ export const useStopwatchSync = () => {
 
           const data = payload.new as any;
           
+          accumulatedTimeRef.current = data.accumulated_time;
+          
           if (data.is_running && data.start_timestamp) {
             const elapsed = Date.now() - data.start_timestamp;
             setTime(data.accumulated_time + elapsed);
@@ -165,21 +169,24 @@ export const useStopwatchSync = () => {
     if (!isRunning) {
       const timestamp = Date.now();
       startTimeRef.current = timestamp;
+      accumulatedTimeRef.current = time;
       setIsRunning(true);
       
       await syncState({
         startTimestamp: timestamp,
-        accumulatedTime: time - (Date.now() - timestamp),
+        accumulatedTime: time,
         isRunning: true
       });
     } else {
-      const accumulated = time;
+      const currentTime = time;
+      accumulatedTimeRef.current = currentTime;
       startTimeRef.current = null;
       setIsRunning(false);
+      setTime(currentTime);
       
       await syncState({
         startTimestamp: null,
-        accumulatedTime: accumulated,
+        accumulatedTime: currentTime,
         isRunning: false
       });
     }
@@ -201,6 +208,7 @@ export const useStopwatchSync = () => {
     setTime(0);
     setLaps([]);
     startTimeRef.current = null;
+    accumulatedTimeRef.current = 0;
 
     await syncState({
       startTimestamp: null,
