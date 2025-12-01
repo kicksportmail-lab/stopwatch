@@ -246,8 +246,30 @@ export const Stopwatch = () => {
               </div>
             </div>
 
+            {/* Notification Toggle */}
+            <div className="flex justify-center pt-6 pb-2">
+              <Button
+                onClick={notificationsEnabled ? () => setNotificationsEnabled(false) : requestNotificationPermission}
+                variant={notificationsEnabled ? "secondary" : "outline"}
+                size="default"
+                className="w-full max-w-xs transition-all"
+              >
+                {notificationsEnabled ? (
+                  <>
+                    <Bell className="h-5 w-5 mr-2" />
+                    Notifications Enabled
+                  </>
+                ) : (
+                  <>
+                    <BellOff className="h-5 w-5 mr-2" />
+                    Enable Notifications
+                  </>
+                )}
+              </Button>
+            </div>
+
             {/* Control Buttons */}
-            <div className="flex gap-4 justify-center pt-4">
+            <div className="flex gap-4 justify-center pt-2">
               <Button
                 onClick={handleStartStop}
                 size="lg"
@@ -274,28 +296,6 @@ export const Stopwatch = () => {
                 className="h-16 w-16 rounded-full border-border/50 hover:bg-secondary/50 transition-all hover:scale-105"
               >
                 <RotateCcw className="h-6 w-6" />
-              </Button>
-            </div>
-
-            {/* Notification Toggle */}
-            <div className="flex justify-center pt-4">
-              <Button
-                onClick={notificationsEnabled ? () => setNotificationsEnabled(false) : requestNotificationPermission}
-                variant={notificationsEnabled ? "secondary" : "outline"}
-                size="default"
-                className="w-full max-w-xs transition-all"
-              >
-                {notificationsEnabled ? (
-                  <>
-                    <Bell className="h-5 w-5 mr-2" />
-                    Notifications Enabled
-                  </>
-                ) : (
-                  <>
-                    <BellOff className="h-5 w-5 mr-2" />
-                    Enable Notifications
-                  </>
-                )}
               </Button>
             </div>
           </div>
