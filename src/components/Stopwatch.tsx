@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Play, Pause, RotateCcw, Flag } from "lucide-react";
+import { Play, Pause, RotateCcw, Flag, Bell, BellOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -19,6 +19,105 @@ export const Stopwatch = () => {
   const { time, isRunning, laps, handleStartStop, handleReset, handleLap } = useStopwatchSync();
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [sessionName, setSessionName] = useState("");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const notificationIntervalRef = useRef<number | null>(null);
+  const lastNotificationRef = useRef<Notification | null>(null);
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+  }, []);
+
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      toast({
+        title: "Not supported",
+        description: "Notifications are not supported in this browser.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setNotificationsEnabled(permission === 'granted');
+    
+    if (permission === 'granted') {
+      toast({
+        title: "Notifications enabled",
+        description: "You'll see stopwatch updates in notifications."
+      });
+    } else {
+      toast({
+        title: "Permission denied",
+        description: "Please enable notifications in your browser settings.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Show notification with current time
+  const showNotification = (currentTime: number) => {
+    if (!notificationsEnabled || !('Notification' in window)) return;
+
+    // Close previous notification
+    if (lastNotificationRef.current) {
+      lastNotificationRef.current.close();
+    }
+
+    const { hours, minutes, seconds } = formatTime(currentTime);
+    const timeString = `${hours}:${minutes}:${seconds}`;
+
+    const notification = new Notification('Stopwatch Running', {
+      body: timeString,
+      icon: '/icon-192.png',
+      tag: 'stopwatch-time',
+      silent: true,
+      requireInteraction: false
+    });
+
+    lastNotificationRef.current = notification;
+  };
+
+  // Handle notification updates when stopwatch is running
+  useEffect(() => {
+    if (isRunning && notificationsEnabled) {
+      // Show initial notification
+      showNotification(time);
+
+      // Update notification every 3 seconds
+      notificationIntervalRef.current = window.setInterval(() => {
+        showNotification(time);
+      }, 3000);
+    } else {
+      // Clear interval when stopped
+      if (notificationIntervalRef.current) {
+        clearInterval(notificationIntervalRef.current);
+        notificationIntervalRef.current = null;
+      }
+      
+      // Close notification when stopped
+      if (lastNotificationRef.current) {
+        lastNotificationRef.current.close();
+        lastNotificationRef.current = null;
+      }
+    }
+
+    return () => {
+      if (notificationIntervalRef.current) {
+        clearInterval(notificationIntervalRef.current);
+      }
+    };
+  }, [isRunning, notificationsEnabled]);
+
+  // Update notification with current time
+  useEffect(() => {
+    if (isRunning && notificationsEnabled && time % 3000 < 100) {
+      showNotification(time);
+    }
+  }, [time, isRunning, notificationsEnabled]);
 
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / 3600000);
@@ -190,6 +289,28 @@ export const Stopwatch = () => {
                 className="h-16 w-16 rounded-full border-border/50 hover:bg-secondary/50 transition-all hover:scale-105"
               >
                 <RotateCcw className="h-6 w-6" />
+              </Button>
+            </div>
+
+            {/* Notification Toggle */}
+            <div className="flex justify-center pt-2">
+              <Button
+                onClick={notificationsEnabled ? () => setNotificationsEnabled(false) : requestNotificationPermission}
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {notificationsEnabled ? (
+                  <>
+                    <Bell className="h-4 w-4 mr-2" />
+                    Notifications On
+                  </>
+                ) : (
+                  <>
+                    <BellOff className="h-4 w-4 mr-2" />
+                    Enable Notifications
+                  </>
+                )}
               </Button>
             </div>
           </div>
