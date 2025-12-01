@@ -58,46 +58,38 @@ export const Stopwatch = () => {
     }
   };
 
-  // Show notification with current time
-  const showNotification = (currentTime: number) => {
+  // Show persistent notification
+  const showNotification = () => {
     if (!notificationsEnabled || !('Notification' in window)) return;
 
-    // Close previous notification
+    // Close previous notification if exists
     if (lastNotificationRef.current) {
       lastNotificationRef.current.close();
     }
 
-    const { hours, minutes, seconds } = formatTime(currentTime);
-    const timeString = `${hours}:${minutes}:${seconds}`;
-
     const notification = new Notification('Stopwatch Running', {
-      body: timeString,
+      body: 'Tap to view your stopwatch',
       icon: '/icon-192.png',
-      tag: 'stopwatch-time',
+      tag: 'stopwatch-persistent',
       silent: true,
-      requireInteraction: false
+      requireInteraction: true // Keeps notification visible
     });
+
+    // Handle notification click to focus the app
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
 
     lastNotificationRef.current = notification;
   };
 
-  // Handle notification updates when stopwatch is running
+  // Handle persistent notification when stopwatch is running
   useEffect(() => {
     if (isRunning && notificationsEnabled) {
-      // Show initial notification
-      showNotification(time);
-
-      // Update notification every 3 seconds
-      notificationIntervalRef.current = window.setInterval(() => {
-        showNotification(time);
-      }, 3000);
+      // Show persistent notification once
+      showNotification();
     } else {
-      // Clear interval when stopped
-      if (notificationIntervalRef.current) {
-        clearInterval(notificationIntervalRef.current);
-        notificationIntervalRef.current = null;
-      }
-      
       // Close notification when stopped
       if (lastNotificationRef.current) {
         lastNotificationRef.current.close();
@@ -106,18 +98,11 @@ export const Stopwatch = () => {
     }
 
     return () => {
-      if (notificationIntervalRef.current) {
-        clearInterval(notificationIntervalRef.current);
+      if (lastNotificationRef.current) {
+        lastNotificationRef.current.close();
       }
     };
   }, [isRunning, notificationsEnabled]);
-
-  // Update notification with current time
-  useEffect(() => {
-    if (isRunning && notificationsEnabled && time % 3000 < 100) {
-      showNotification(time);
-    }
-  }, [time, isRunning, notificationsEnabled]);
 
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / 3600000);
