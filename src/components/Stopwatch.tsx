@@ -278,21 +278,21 @@ export const Stopwatch = () => {
             </div>
 
             {/* Notification Toggle */}
-            <div className="flex justify-center pt-2">
+            <div className="flex justify-center pt-4">
               <Button
                 onClick={notificationsEnabled ? () => setNotificationsEnabled(false) : requestNotificationPermission}
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                variant={notificationsEnabled ? "secondary" : "outline"}
+                size="default"
+                className="w-full max-w-xs transition-all"
               >
                 {notificationsEnabled ? (
                   <>
-                    <Bell className="h-4 w-4 mr-2" />
-                    Notifications On
+                    <Bell className="h-5 w-5 mr-2" />
+                    Notifications Enabled
                   </>
                 ) : (
                   <>
-                    <BellOff className="h-4 w-4 mr-2" />
+                    <BellOff className="h-5 w-5 mr-2" />
                     Enable Notifications
                   </>
                 )}
