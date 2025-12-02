@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Play, Pause, RotateCcw, Flag, Bell, BellOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -247,7 +248,18 @@ export const Stopwatch = () => {
             </div>
 
             {/* Notification Toggle */}
-            <div className="flex justify-center pt-6 pb-2">
+            <div className="flex flex-col items-center pt-6 pb-2 gap-3">
+              {/* Active Notification Badge */}
+              {notificationsEnabled && isRunning && (
+                <Badge 
+                  variant="default" 
+                  className="animate-pulse bg-primary/90 text-primary-foreground px-4 py-1.5 text-sm font-semibold shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
+                >
+                  <Bell className="h-3.5 w-3.5 mr-1.5" />
+                  Background Notifications Active
+                </Badge>
+              )}
+              
               <Button
                 onClick={notificationsEnabled ? () => setNotificationsEnabled(false) : requestNotificationPermission}
                 variant={notificationsEnabled ? "secondary" : "outline"}
