@@ -13,6 +13,7 @@ interface StopwatchState {
   accumulatedTime: number;
   isRunning: boolean;
   laps: LapTime[];
+  taskId?: string | null;
 }
 
 const DEVICE_ID = `device_${Math.random().toString(36).substring(7)}`;
@@ -22,11 +23,13 @@ export const useStopwatchSync = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [laps, setLaps] = useState<LapTime[]>([]);
   const [stateId, setStateId] = useState<string | null>(null);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const intervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const accumulatedTimeRef = useRef(0);
   const isUpdatingRef = useRef(false);
   const lastUpdateTime = useRef(0);
+  const taskStartTimeRef = useRef(0);
 
   // Load initial state from database
   useEffect(() => {
@@ -63,12 +66,14 @@ export const useStopwatchSync = () => {
       if (stateData) {
         setStateId(stateData.id);
         accumulatedTimeRef.current = stateData.accumulated_time;
+        setCurrentTaskId(stateData.task_id || null);
         
         if (stateData.is_running && stateData.start_timestamp) {
           const elapsed = Date.now() - stateData.start_timestamp;
           setTime(stateData.accumulated_time + elapsed);
           setIsRunning(true);
           startTimeRef.current = stateData.start_timestamp;
+          taskStartTimeRef.current = stateData.accumulated_time;
         } else {
           setTime(stateData.accumulated_time);
           setIsRunning(false);
@@ -126,6 +131,9 @@ export const useStopwatchSync = () => {
     if (state.laps !== undefined) {
       updateData.laps = state.laps;
     }
+    if (state.taskId !== undefined) {
+      updateData.task_id = state.taskId;
+    }
 
     await supabase
       .from('stopwatch_state')
@@ -162,6 +170,7 @@ export const useStopwatchSync = () => {
           const data = payload.new as any;
           
           accumulatedTimeRef.current = data.accumulated_time;
+          setCurrentTaskId(data.task_id || null);
           
           if (data.is_running && data.start_timestamp) {
             // Only update if not already running or if timestamp changed
@@ -170,6 +179,7 @@ export const useStopwatchSync = () => {
               setTime(data.accumulated_time + elapsed);
               setIsRunning(true);
               startTimeRef.current = data.start_timestamp;
+              taskStartTimeRef.current = data.accumulated_time;
             }
           } else {
             // Stopwatch was stopped remotely
@@ -219,27 +229,48 @@ export const useStopwatchSync = () => {
 
   const handleReset = async (name?: string) => {
     if (time > 0) {
+      // Update task time if there's an active task
+      if (currentTaskId) {
+        const timeSpent = time - taskStartTimeRef.current;
+        const { data: task } = await supabase
+          .from('tasks')
+          .select('total_time_spent_ms')
+          .eq('id', currentTaskId)
+          .single();
+        
+        if (task) {
+          await supabase
+            .from('tasks')
+            .update({ total_time_spent_ms: task.total_time_spent_ms + timeSpent })
+            .eq('id', currentTaskId);
+        }
+      }
+      
       // Save to history
       await supabase
         .from('stopwatch_sessions')
         .insert({
           time,
           laps: JSON.parse(JSON.stringify(laps)),
-          name: name || null
+          name: name || null,
+          task_id: currentTaskId
         });
     }
 
     setIsRunning(false);
     setTime(0);
     setLaps([]);
+    setCurrentTaskId(null);
     startTimeRef.current = null;
     accumulatedTimeRef.current = 0;
+    taskStartTimeRef.current = 0;
 
     await syncState({
       startTimestamp: null,
       accumulatedTime: 0,
       isRunning: false,
-      laps: []
+      laps: [],
+      taskId: null
     });
   };
 
@@ -254,12 +285,20 @@ export const useStopwatchSync = () => {
     }
   };
 
+  const setTask = async (taskId: string | null) => {
+    setCurrentTaskId(taskId);
+    taskStartTimeRef.current = time;
+    await syncState({ taskId });
+  };
+
   return {
     time,
     isRunning,
     laps,
+    currentTaskId,
     handleStartStop,
     handleReset,
     handleLap,
+    setTask,
   };
 };

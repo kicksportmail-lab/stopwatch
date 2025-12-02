@@ -21,6 +21,7 @@ export type Database = {
           id: string
           laps: Json
           name: string | null
+          task_id: string | null
           time: number
           user_id: string
         }
@@ -30,6 +31,7 @@ export type Database = {
           id?: string
           laps?: Json
           name?: string | null
+          task_id?: string | null
           time: number
           user_id?: string
         }
@@ -39,10 +41,19 @@ export type Database = {
           id?: string
           laps?: Json
           name?: string | null
+          task_id?: string | null
           time?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stopwatch_sessions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stopwatch_state: {
         Row: {
@@ -51,6 +62,7 @@ export type Database = {
           is_running: boolean
           laps: Json
           start_timestamp: number | null
+          task_id: string | null
           updated_at: string
           user_id: string
         }
@@ -60,6 +72,7 @@ export type Database = {
           is_running?: boolean
           laps?: Json
           start_timestamp?: number | null
+          task_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -69,6 +82,48 @@ export type Database = {
           is_running?: boolean
           laps?: Json
           start_timestamp?: number | null
+          task_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stopwatch_state_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          id: string
+          is_completed: boolean
+          name: string
+          target_time_ms: number
+          total_time_spent_ms: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          name: string
+          target_time_ms: number
+          total_time_spent_ms?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          name?: string
+          target_time_ms?: number
+          total_time_spent_ms?: number
           updated_at?: string
           user_id?: string
         }

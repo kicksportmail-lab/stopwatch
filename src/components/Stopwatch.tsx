@@ -15,9 +15,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStopwatchSync } from "@/hooks/useStopwatchSync";
+import { useTasksSync } from "@/hooks/useTasksSync";
+import { Progress } from "@/components/ui/progress";
+import { Target } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Stopwatch = () => {
-  const { time, isRunning, laps, handleStartStop, handleReset, handleLap } = useStopwatchSync();
+  const { time, isRunning, laps, currentTaskId, handleStartStop, handleReset, handleLap, setTask } = useStopwatchSync();
+  const { tasks } = useTasksSync();
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [sessionName, setSessionName] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -180,9 +191,65 @@ export const Stopwatch = () => {
 
   const { x, y } = getAnalogPosition();
 
+  const currentTask = tasks.find(t => t.id === currentTaskId);
+  const taskProgress = currentTask ? Math.min((currentTask.total_time_spent_ms + time) / currentTask.target_time_ms * 100, 100) : 0;
+  const isTaskOvertime = currentTask && (currentTask.total_time_spent_ms + time) > currentTask.target_time_ms;
+
   return (
     <>
       <div className="w-full max-w-md mx-auto space-y-6 animate-fade-in">
+        {/* Task Selection */}
+        {!isRunning && (
+          <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <Target className="h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <Select
+                  value={currentTaskId || "none"}
+                  onValueChange={(value) => setTask(value === "none" ? null : value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a task (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No task selected</SelectItem>
+                    {tasks.filter(t => !t.is_completed).map(task => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Task Progress Card */}
+        {currentTask && (
+          <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4 animate-scale-in">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-sm">{currentTask.name}</span>
+                </div>
+                <Badge variant={isTaskOvertime ? "destructive" : "secondary"} className="text-xs">
+                  {formatTime(currentTask.total_time_spent_ms + time).hours}:
+                  {formatTime(currentTask.total_time_spent_ms + time).minutes}:
+                  {formatTime(currentTask.total_time_spent_ms + time).seconds} / {formatTime(currentTask.target_time_ms).hours}:
+                  {formatTime(currentTask.target_time_ms).minutes}:
+                  {formatTime(currentTask.target_time_ms).seconds}
+                </Badge>
+              </div>
+              <Progress 
+                value={taskProgress} 
+                className={isTaskOvertime ? "bg-destructive/20" : ""}
+              />
+            </div>
+          </Card>
+        )}
+
         <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-8">
           <div className="text-center space-y-8">
             {/* Analog Clock with Digital Display */}
