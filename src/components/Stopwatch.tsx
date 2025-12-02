@@ -21,7 +21,7 @@ export const Stopwatch = () => {
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [sessionName, setSessionName] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const notificationIntervalRef = useRef<number | null>(null);
+  const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastNotificationRef = useRef<Notification | null>(null);
 
   // Check notification permission on mount
@@ -59,8 +59,8 @@ export const Stopwatch = () => {
     }
   };
 
-  // Show persistent notification
-  const showNotification = () => {
+  // Show persistent notification with current time
+  const showNotification = (currentTime: number) => {
     if (!notificationsEnabled || !('Notification' in window)) return;
 
     // Close previous notification if exists
@@ -68,8 +68,11 @@ export const Stopwatch = () => {
       lastNotificationRef.current.close();
     }
 
+    const { hours, minutes, seconds } = formatTime(currentTime);
+    const timeString = `${hours}:${minutes}:${seconds}`;
+
     const notification = new Notification('Stopwatch Running', {
-      body: 'Tap to view your stopwatch',
+      body: `Elapsed: ${timeString}`,
       icon: '/icon-192.png',
       tag: 'stopwatch-persistent',
       silent: true,
@@ -88,10 +91,21 @@ export const Stopwatch = () => {
   // Handle persistent notification when stopwatch is running
   useEffect(() => {
     if (isRunning && notificationsEnabled) {
-      // Show persistent notification once
-      showNotification();
+      // Show initial notification
+      showNotification(time);
+      
+      // Update notification every 3 seconds with current time
+      const interval = setInterval(() => {
+        showNotification(time);
+      }, 3000);
+      
+      notificationIntervalRef.current = interval;
     } else {
-      // Close notification when stopped
+      // Clear interval and close notification when stopped
+      if (notificationIntervalRef.current) {
+        clearInterval(notificationIntervalRef.current);
+        notificationIntervalRef.current = null;
+      }
       if (lastNotificationRef.current) {
         lastNotificationRef.current.close();
         lastNotificationRef.current = null;
@@ -99,11 +113,14 @@ export const Stopwatch = () => {
     }
 
     return () => {
+      if (notificationIntervalRef.current) {
+        clearInterval(notificationIntervalRef.current);
+      }
       if (lastNotificationRef.current) {
         lastNotificationRef.current.close();
       }
     };
-  }, [isRunning, notificationsEnabled]);
+  }, [isRunning, notificationsEnabled, time]);
 
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / 3600000);
