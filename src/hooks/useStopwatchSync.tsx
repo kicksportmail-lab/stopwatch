@@ -30,6 +30,7 @@ export const useStopwatchSync = () => {
   const isUpdatingRef = useRef(false);
   const lastUpdateTime = useRef(0);
   const taskStartTimeRef = useRef(0);
+  const isRunningRef = useRef(false);
 
   // Load initial state from database
   useEffect(() => {
@@ -85,6 +86,11 @@ export const useStopwatchSync = () => {
 
     loadState();
   }, []);
+
+  // Keep isRunningRef in sync
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
 
   // Main timer effect
   useEffect(() => {
@@ -174,7 +180,7 @@ export const useStopwatchSync = () => {
           
           if (data.is_running && data.start_timestamp) {
             // Only update if not already running or if timestamp changed
-            if (!isRunning || startTimeRef.current !== data.start_timestamp) {
+            if (!isRunningRef.current || startTimeRef.current !== data.start_timestamp) {
               const elapsed = Date.now() - data.start_timestamp;
               setTime(data.accumulated_time + elapsed);
               setIsRunning(true);
@@ -183,7 +189,7 @@ export const useStopwatchSync = () => {
             }
           } else {
             // Stopwatch was stopped remotely
-            if (isRunning) {
+            if (isRunningRef.current) {
               setTime(data.accumulated_time);
               setIsRunning(false);
               startTimeRef.current = null;
