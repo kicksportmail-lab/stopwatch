@@ -35,110 +35,7 @@ export const Stopwatch = () => {
   const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastNotificationRef = useRef<Notification | null>(null);
 
-  // Check notification permission on mount
-  useEffect(() => {
-    if ('Notification' in window) {
-      setNotificationsEnabled(Notification.permission === 'granted');
-    }
-  }, []);
-
-  // Request notification permission
-  const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      toast({
-        title: "Not supported",
-        description: "Notifications are not supported in this browser.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-    setNotificationsEnabled(permission === 'granted');
-    
-    if (permission === 'granted') {
-      toast({
-        title: "Notifications enabled",
-        description: "You'll see stopwatch updates in notifications."
-      });
-    } else {
-      toast({
-        title: "Permission denied",
-        description: "Please enable notifications in your browser settings.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Show persistent notification with current time
-  const showNotification = (currentTime: number) => {
-    if (!notificationsEnabled || !('Notification' in window)) return;
-
-    // Close previous notification if exists
-    if (lastNotificationRef.current) {
-      lastNotificationRef.current.close();
-    }
-
-    const { hours, minutes, seconds } = formatTime(currentTime);
-    const timeString = `${hours}:${minutes}:${seconds}`;
-
-    const notification = new Notification('Stopwatch Running', {
-      body: `Elapsed: ${timeString}`,
-      icon: '/icon-192.png',
-      tag: 'stopwatch-persistent',
-      silent: true,
-      requireInteraction: true // Keeps notification visible
-    });
-
-    // Handle notification click to focus the app
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
-
-    lastNotificationRef.current = notification;
-  };
-
-  // Store time in a ref for notifications to avoid dependency issues
-  const timeRef = useRef(time);
-  useEffect(() => {
-    timeRef.current = time;
-  }, [time]);
-
-  // Handle persistent notification when stopwatch is running
-  useEffect(() => {
-    if (isRunning && notificationsEnabled) {
-      // Show initial notification
-      showNotification(timeRef.current);
-      
-      // Update notification every 3 seconds with current time
-      const interval = setInterval(() => {
-        showNotification(timeRef.current);
-      }, 3000);
-      
-      notificationIntervalRef.current = interval;
-    } else {
-      // Clear interval and close notification when stopped
-      if (notificationIntervalRef.current) {
-        clearInterval(notificationIntervalRef.current);
-        notificationIntervalRef.current = null;
-      }
-      if (lastNotificationRef.current) {
-        lastNotificationRef.current.close();
-        lastNotificationRef.current = null;
-      }
-    }
-
-    return () => {
-      if (notificationIntervalRef.current) {
-        clearInterval(notificationIntervalRef.current);
-      }
-      if (lastNotificationRef.current) {
-        lastNotificationRef.current.close();
-      }
-    };
-  }, [isRunning, notificationsEnabled]);
-
+  // Format time helper - defined early so it can be used by notification functions
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / 3600000);
     const minutes = Math.floor((ms % 3600000) / 60000);
@@ -152,6 +49,131 @@ export const Stopwatch = () => {
       milliseconds: milliseconds.toString().padStart(2, "0"),
     };
   };
+
+  // Check notification permission on mount
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setNotificationsEnabled(Notification.permission === 'granted');
+      }
+    } catch (e) {
+      console.warn('Notification API not available:', e);
+    }
+  }, []);
+
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    try {
+      if (typeof window === 'undefined' || !('Notification' in window)) {
+        toast({
+          title: "Not supported",
+          description: "Notifications are not supported in this browser.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      setNotificationsEnabled(permission === 'granted');
+      
+      if (permission === 'granted') {
+        toast({
+          title: "Notifications enabled",
+          description: "You'll see stopwatch updates in notifications."
+        });
+      } else {
+        toast({
+          title: "Permission denied",
+          description: "Please enable notifications in your browser settings.",
+          variant: "destructive"
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to request notification permission:', e);
+      toast({
+        title: "Error",
+        description: "Could not request notification permission.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Store time in a ref for notifications to avoid dependency issues
+  const timeRef = useRef(time);
+  useEffect(() => {
+    timeRef.current = time;
+  }, [time]);
+
+  // Show persistent notification with current time
+  const showNotification = (currentTime: number) => {
+    try {
+      if (!notificationsEnabled || typeof window === 'undefined' || !('Notification' in window)) return;
+
+      // Close previous notification if exists
+      if (lastNotificationRef.current) {
+        lastNotificationRef.current.close();
+      }
+
+      const { hours, minutes, seconds } = formatTime(currentTime);
+      const timeString = `${hours}:${minutes}:${seconds}`;
+
+      const notification = new Notification('Stopwatch Running', {
+        body: `Elapsed: ${timeString}`,
+        icon: '/icon-192.png',
+        tag: 'stopwatch-persistent',
+        silent: true,
+        requireInteraction: true
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      lastNotificationRef.current = notification;
+    } catch (e) {
+      console.warn('Failed to show notification:', e);
+    }
+  };
+
+  // Handle persistent notification when stopwatch is running
+  useEffect(() => {
+    if (isRunning && notificationsEnabled) {
+      showNotification(timeRef.current);
+      
+      const interval = setInterval(() => {
+        showNotification(timeRef.current);
+      }, 3000);
+      
+      notificationIntervalRef.current = interval;
+    } else {
+      if (notificationIntervalRef.current) {
+        clearInterval(notificationIntervalRef.current);
+        notificationIntervalRef.current = null;
+      }
+      if (lastNotificationRef.current) {
+        try {
+          lastNotificationRef.current.close();
+        } catch (e) {
+          console.warn('Failed to close notification:', e);
+        }
+        lastNotificationRef.current = null;
+      }
+    }
+
+    return () => {
+      if (notificationIntervalRef.current) {
+        clearInterval(notificationIntervalRef.current);
+      }
+      if (lastNotificationRef.current) {
+        try {
+          lastNotificationRef.current.close();
+        } catch (e) {
+          console.warn('Failed to close notification:', e);
+        }
+      }
+    };
+  }, [isRunning, notificationsEnabled]);
 
   const handleResetClick = () => {
     if (time > 0) {
