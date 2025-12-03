@@ -32,8 +32,6 @@ export const Stopwatch = () => {
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [sessionName, setSessionName] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastNotificationRef = useRef<Notification | null>(null);
 
   // Format time helper - defined early so it can be used by notification functions
   const formatTime = (ms: number) => {
@@ -104,74 +102,58 @@ export const Stopwatch = () => {
     timeRef.current = time;
   }, [time]);
 
-  // Show persistent notification with current time
-  const showNotification = (currentTime: number) => {
+  // Send message to service worker for background notifications
+  const sendToServiceWorker = (message: object) => {
     try {
-      if (!notificationsEnabled || typeof window === 'undefined' || !('Notification' in window)) return;
-
-      // Close previous notification if exists
-      if (lastNotificationRef.current) {
-        lastNotificationRef.current.close();
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage(message);
       }
-
-      const { hours, minutes, seconds } = formatTime(currentTime);
-      const timeString = `${hours}:${minutes}:${seconds}`;
-
-      const notification = new Notification('Stopwatch Running', {
-        body: `Elapsed: ${timeString}`,
-        icon: '/icon-192.png',
-        tag: 'stopwatch-persistent',
-        silent: true,
-        requireInteraction: true
-      });
-
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-      };
-
-      lastNotificationRef.current = notification;
     } catch (e) {
-      console.warn('Failed to show notification:', e);
+      console.warn('Failed to send message to service worker:', e);
     }
   };
 
-  // Handle persistent notification when stopwatch is running
+  // Listen for messages from service worker (stop from notification)
   useEffect(() => {
-    if (isRunning && notificationsEnabled) {
-      showNotification(timeRef.current);
-      
-      const interval = setInterval(() => {
-        showNotification(timeRef.current);
-      }, 3000);
-      
-      notificationIntervalRef.current = interval;
-    } else {
-      if (notificationIntervalRef.current) {
-        clearInterval(notificationIntervalRef.current);
-        notificationIntervalRef.current = null;
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'STOP_STOPWATCH') {
+        handleStartStop();
       }
-      if (lastNotificationRef.current) {
-        try {
-          lastNotificationRef.current.close();
-        } catch (e) {
-          console.warn('Failed to close notification:', e);
-        }
-        lastNotificationRef.current = null;
-      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleMessage);
     }
 
     return () => {
-      if (notificationIntervalRef.current) {
-        clearInterval(notificationIntervalRef.current);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleMessage);
       }
-      if (lastNotificationRef.current) {
-        try {
-          lastNotificationRef.current.close();
-        } catch (e) {
-          console.warn('Failed to close notification:', e);
-        }
-      }
+    };
+  }, [handleStartStop]);
+
+  // Handle persistent notification when stopwatch is running (via service worker)
+  useEffect(() => {
+    if (!notificationsEnabled) return;
+
+    if (isRunning) {
+      // Calculate start timestamp for service worker
+      const startTimestamp = Date.now() - time;
+      sendToServiceWorker({
+        type: 'STOPWATCH_UPDATE',
+        running: true,
+        startTimestamp,
+        accumulatedTime: 0
+      });
+    } else {
+      sendToServiceWorker({
+        type: 'STOPWATCH_UPDATE',
+        running: false
+      });
+    }
+
+    return () => {
+      sendToServiceWorker({ type: 'STOP_NOTIFICATIONS' });
     };
   }, [isRunning, notificationsEnabled]);
 
