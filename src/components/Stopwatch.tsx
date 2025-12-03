@@ -99,15 +99,21 @@ export const Stopwatch = () => {
     lastNotificationRef.current = notification;
   };
 
+  // Store time in a ref for notifications to avoid dependency issues
+  const timeRef = useRef(time);
+  useEffect(() => {
+    timeRef.current = time;
+  }, [time]);
+
   // Handle persistent notification when stopwatch is running
   useEffect(() => {
     if (isRunning && notificationsEnabled) {
       // Show initial notification
-      showNotification(time);
+      showNotification(timeRef.current);
       
       // Update notification every 3 seconds with current time
       const interval = setInterval(() => {
-        showNotification(time);
+        showNotification(timeRef.current);
       }, 3000);
       
       notificationIntervalRef.current = interval;
@@ -131,7 +137,7 @@ export const Stopwatch = () => {
         lastNotificationRef.current.close();
       }
     };
-  }, [isRunning, notificationsEnabled, time]);
+  }, [isRunning, notificationsEnabled]);
 
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / 3600000);
