@@ -166,28 +166,42 @@ export const Tasks = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">
-                      {formatTime(task.total_time_spent_ms)} /{' '}
-                      {formatTime(task.target_time_ms)}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-sm">Progress</span>
+                      <Badge 
+                        variant={isOvertime(task) ? "destructive" : getProgress(task) >= 100 ? "default" : "secondary"}
+                        className="text-xs font-bold"
+                      >
+                        {Math.round(getProgress(task))}%
+                      </Badge>
+                    </div>
+                    <span className="font-mono text-sm font-medium">
+                      {formatTime(task.total_time_spent_ms)} / {formatTime(task.target_time_ms)}
                     </span>
                   </div>
                   <Progress
                     value={getProgress(task)}
                     className={isOvertime(task) ? 'bg-destructive/20' : ''}
                   />
-                  {isOvertime(task) && (
-                    <Badge variant="destructive" className="mt-2">
-                      Over target by {formatTime(task.total_time_spent_ms - task.target_time_ms)}
-                    </Badge>
-                  )}
-                  {task.is_completed && (
-                    <Badge variant="secondary" className="mt-2">
-                      Completed
-                    </Badge>
-                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    {isOvertime(task) && (
+                      <Badge variant="destructive">
+                        +{formatTime(task.total_time_spent_ms - task.target_time_ms)} overtime
+                      </Badge>
+                    )}
+                    {!task.is_completed && getProgress(task) < 100 && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        {formatTime(task.target_time_ms - task.total_time_spent_ms)} remaining
+                      </Badge>
+                    )}
+                    {task.is_completed && (
+                      <Badge variant="default" className="bg-primary">
+                        Completed
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
