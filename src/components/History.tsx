@@ -1,8 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, Clock, TrendingUp, TrendingDown, BarChart3, Download, Filter, X, Edit2, Check } from "lucide-react";
+import { Trash2, Calendar, Download, Filter, X, Edit2, Check } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -123,41 +122,6 @@ export const History = ({
     }).format(date);
   };
 
-  const calculateStats = () => {
-    if (filteredSessions.length === 0) return null;
-    
-    const times = filteredSessions.map(s => s.time);
-    const total = filteredSessions.length;
-    const average = times.reduce((a, b) => a + b, 0) / total;
-    const longest = Math.max(...times);
-    const shortest = Math.min(...times);
-    
-    return { total, average, longest, shortest };
-  };
-
-  const prepareChartData = () => {
-    return filteredSessions
-      .slice()
-      .reverse()
-      .map((session, index) => ({
-        name: `Session ${filteredSessions.length - index}`,
-        time: Math.round(session.time / 1000), // Convert to seconds for better readability
-        date: formatDate(session.date),
-      }));
-  };
-
-  const formatChartTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
-  };
 
   const exportToJSON = () => {
     const dataStr = JSON.stringify(sessions, null, 2);
@@ -192,8 +156,6 @@ export const History = ({
     URL.revokeObjectURL(url);
   };
 
-  const stats = calculateStats();
-  const chartData = prepareChartData();
 
   if (sessions.length === 0) {
     return (
@@ -344,90 +306,6 @@ export const History = ({
         <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-8 text-center">
           <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground">No sessions match your filters. Try adjusting them.</p>
-        </Card>
-      )}
-      {/* Statistics Summary */}
-      {stats && (
-        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            Statistics
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-secondary/30 rounded-lg p-4 border border-border/30">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Calendar className="h-4 w-4" />
-                Total Sessions
-              </div>
-              <div className="text-2xl font-bold text-foreground font-mono">{stats.total}</div>
-            </div>
-            <div className="bg-secondary/30 rounded-lg p-4 border border-border/30">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Clock className="h-4 w-4" />
-                Average Time
-              </div>
-              <div className="text-2xl font-bold text-foreground font-mono">{formatTime(stats.average)}</div>
-            </div>
-            <div className="bg-secondary/30 rounded-lg p-4 border border-border/30">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <TrendingUp className="h-4 w-4" />
-                Longest
-              </div>
-              <div className="text-2xl font-bold text-foreground font-mono">{formatTime(stats.longest)}</div>
-            </div>
-            <div className="bg-secondary/30 rounded-lg p-4 border border-border/30">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <TrendingDown className="h-4 w-4" />
-                Shortest
-              </div>
-              <div className="text-2xl font-bold text-foreground font-mono">{formatTime(stats.shortest)}</div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Chart Visualization */}
-      {filteredSessions.length > 1 && (
-        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            Session Duration Trend
-          </h3>
-          <div className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
-                <XAxis 
-                  dataKey="name" 
-                  className="text-xs"
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <YAxis 
-                  tickFormatter={formatChartTime}
-                  className="text-xs"
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--secondary))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    color: "hsl(var(--foreground))"
-                  }}
-                  formatter={(value: number) => [formatChartTime(value), "Duration"]}
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="time" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(var(--primary))", r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
         </Card>
       )}
 
