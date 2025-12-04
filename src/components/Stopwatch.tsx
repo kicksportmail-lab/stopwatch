@@ -18,6 +18,7 @@ import { useStopwatchSync } from "@/hooks/useStopwatchSync";
 import { useTasksSync } from "@/hooks/useTasksSync";
 import { Progress } from "@/components/ui/progress";
 import { Target } from "lucide-react";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,7 @@ import {
 export const Stopwatch = () => {
   const { time, isRunning, laps, currentTaskId, handleStartStop, handleReset, handleLap, setTask } = useStopwatchSync();
   const { tasks } = useTasksSync();
+  const { playStartSound, playStopSound, playLapSound, playResetSound } = useSoundEffects();
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [sessionName, setSessionName] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -158,6 +160,7 @@ export const Stopwatch = () => {
   }, [isRunning, notificationsEnabled]);
 
   const handleResetClick = () => {
+    playResetSound();
     if (time > 0) {
       setShowNameDialog(true);
     } else {
@@ -377,7 +380,14 @@ export const Stopwatch = () => {
             {/* Control Buttons */}
             <div className="flex gap-4 justify-center pt-2">
               <Button
-                onClick={handleStartStop}
+                onClick={() => {
+                  if (isRunning) {
+                    playStopSound();
+                  } else {
+                    playStartSound();
+                  }
+                  handleStartStop();
+                }}
                 size="lg"
                 className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-[var(--shadow-glow)] transition-all hover:scale-105"
               >
@@ -385,7 +395,10 @@ export const Stopwatch = () => {
               </Button>
 
               <Button
-                onClick={handleLap}
+                onClick={() => {
+                  playLapSound();
+                  handleLap();
+                }}
                 disabled={!isRunning && time === 0}
                 size="lg"
                 variant="secondary"
