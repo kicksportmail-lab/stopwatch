@@ -123,16 +123,6 @@ export const History = ({
   };
 
 
-  const exportToJSON = () => {
-    const dataStr = JSON.stringify(sessions, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `stopwatch-history-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
 
   const exportToCSV = () => {
     const headers = ["Date", "Time", "Laps Count"];
@@ -315,15 +305,6 @@ export const History = ({
           <h2 className="text-2xl font-bold text-foreground">History</h2>
           <div className="flex gap-2">
             <Button
-              onClick={exportToJSON}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              JSON
-            </Button>
-            <Button
               onClick={exportToCSV}
               variant="outline"
               size="sm"
@@ -339,7 +320,7 @@ export const History = ({
               className="gap-2"
             >
               <Trash2 className="h-4 w-4" />
-              Clear All
+              Clear
             </Button>
           </div>
         </div>
