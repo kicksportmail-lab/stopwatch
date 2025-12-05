@@ -110,6 +110,13 @@ export const useHistorySync = () => {
       .eq('id', sessionId);
   };
 
+  const handleDeleteSession = async (sessionId: string) => {
+    await supabase
+      .from('stopwatch_sessions')
+      .delete()
+      .eq('id', sessionId);
+  };
+
   const handleClearHistory = async () => {
     await supabase
       .from('stopwatch_sessions')
@@ -122,6 +129,7 @@ export const useHistorySync = () => {
   return {
     history,
     handleUpdateSessionName,
+    handleDeleteSession,
     handleClearHistory,
   };
 };

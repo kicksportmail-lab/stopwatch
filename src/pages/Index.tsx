@@ -7,7 +7,7 @@ import { Timer } from "lucide-react";
 import { useHistorySync } from "@/hooks/useHistorySync";
 
 const Index = () => {
-  const { history, handleUpdateSessionName, handleClearHistory } = useHistorySync();
+  const { history, handleUpdateSessionName, handleDeleteSession, handleClearHistory } = useHistorySync();
 
   return (
     <div className="min-h-screen bg-gradient-primary">
@@ -49,6 +49,7 @@ const Index = () => {
               sessions={history} 
               onClearHistory={handleClearHistory}
               onUpdateSessionName={handleUpdateSessionName}
+              onDeleteSession={handleDeleteSession}
             />
           </TabsContent>
         </Tabs>
