@@ -28,10 +28,12 @@ export const History = ({
   sessions,
   onClearHistory,
   onUpdateSessionName,
+  onDeleteSession,
 }: {
   sessions: HistorySession[];
   onClearHistory: () => void;
   onUpdateSessionName: (sessionId: string, name: string) => void;
+  onDeleteSession: (sessionId: string) => void;
 }) => {
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
@@ -390,8 +392,18 @@ export const History = ({
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <div className="text-sm text-muted-foreground">
-                    {session.laps.length} lap{session.laps.length !== 1 ? "s" : ""}
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-muted-foreground">
+                      {session.laps.length} lap{session.laps.length !== 1 ? "s" : ""}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onDeleteSession(session.id)}
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                   {!session.name && editingSessionId !== session.id && (
                     <Button
