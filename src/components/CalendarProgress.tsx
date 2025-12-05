@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clock, Flame } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   format,
@@ -16,6 +16,16 @@ import {
   endOfWeek,
   isToday,
 } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useDailyGoal } from "@/hooks/useDailyGoal";
 
 interface LapTime {
   id: number;
@@ -38,6 +48,11 @@ interface CalendarProgressProps {
 export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
+  const [goalHours, setGoalHours] = useState("1");
+  const [goalMinutes, setGoalMinutes] = useState("0");
+  
+  const { dailyGoalMs, updateDailyGoal } = useDailyGoal();
 
   // Aggregate time by day
   const timeByDay = useMemo(() => {
@@ -62,25 +77,62 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
     return Math.max(...Array.from(timeByDay.values()), 1);
   }, [timeByDay]);
 
-  // Calculate streak
+  // Calculate streak (only counts days where goal was met)
   const currentStreak = useMemo(() => {
     let streak = 0;
     let checkDate = new Date();
     
     while (true) {
       const dayKey = format(checkDate, "yyyy-MM-dd");
-      if (timeByDay.has(dayKey)) {
+      const dayTime = timeByDay.get(dayKey) || 0;
+      if (dayTime >= dailyGoalMs) {
         streak++;
         checkDate = new Date(checkDate.setDate(checkDate.getDate() - 1));
       } else if (streak === 0 && !isToday(checkDate)) {
-        // If today has no activity, check yesterday
+        // If today hasn't met goal yet, check yesterday
         checkDate = new Date(checkDate.setDate(checkDate.getDate() - 1));
       } else {
         break;
       }
     }
     return streak;
-  }, [timeByDay]);
+  }, [timeByDay, dailyGoalMs]);
+
+  // Count days goal was met this month
+  const daysGoalMet = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    let count = 0;
+    sessions.forEach((session) => {
+      const sessionDate = new Date(session.date);
+      if (sessionDate >= monthStart && sessionDate <= monthEnd) {
+        const dayKey = format(sessionDate, "yyyy-MM-dd");
+        const dayTime = timeByDay.get(dayKey) || 0;
+        if (dayTime >= dailyGoalMs) {
+          // Only count each day once
+          const alreadyCounted = sessions.some(
+            (s) =>
+              format(new Date(s.date), "yyyy-MM-dd") === dayKey &&
+              sessions.indexOf(s) < sessions.indexOf(session)
+          );
+          if (!alreadyCounted) count++;
+        }
+      }
+    });
+    // Recalculate properly
+    let uniqueDays = 0;
+    const counted = new Set<string>();
+    timeByDay.forEach((time, dayKey) => {
+      const date = new Date(dayKey);
+      if (date >= monthStart && date <= monthEnd && time >= dailyGoalMs) {
+        if (!counted.has(dayKey)) {
+          counted.add(dayKey);
+          uniqueDays++;
+        }
+      }
+    });
+    return uniqueDays;
+  }, [sessions, currentMonth, timeByDay, dailyGoalMs]);
 
   // Get total time this month
   const monthTotal = useMemo(() => {
@@ -120,6 +172,32 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
     return `${minutes}m`;
   };
 
+  // Today's progress
+  const todayTime = useMemo(() => {
+    const todayKey = format(new Date(), "yyyy-MM-dd");
+    return timeByDay.get(todayKey) || 0;
+  }, [timeByDay]);
+
+  const todayProgress = Math.min((todayTime / dailyGoalMs) * 100, 100);
+
+  const handleSaveGoal = () => {
+    const hours = parseInt(goalHours) || 0;
+    const minutes = parseInt(goalMinutes) || 0;
+    const newGoalMs = (hours * 3600000) + (minutes * 60000);
+    if (newGoalMs > 0) {
+      updateDailyGoal(newGoalMs);
+      setGoalDialogOpen(false);
+    }
+  };
+
+  const openGoalDialog = () => {
+    const hours = Math.floor(dailyGoalMs / 3600000);
+    const minutes = Math.floor((dailyGoalMs % 3600000) / 60000);
+    setGoalHours(hours.toString());
+    setGoalMinutes(minutes.toString());
+    setGoalDialogOpen(true);
+  };
+
   // Generate calendar days
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -139,31 +217,116 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
+      {/* Today's Progress */}
+      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/20">
-              <Flame className="h-5 w-5 text-primary" />
+              <Target className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Current Streak</p>
-              <p className="text-2xl font-bold text-foreground">
-                {currentStreak} <span className="text-sm font-normal text-muted-foreground">days</span>
+              <p className="text-sm text-muted-foreground">Today's Goal</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatTime(todayTime)} / {formatTime(dailyGoalMs)}
               </p>
             </div>
+          </div>
+          <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={openGoalDialog}>
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Set Daily Goal</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="hours">Hours</Label>
+                    <Input
+                      id="hours"
+                      type="number"
+                      min="0"
+                      max="24"
+                      value={goalHours}
+                      onChange={(e) => setGoalHours(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="minutes">Minutes</Label>
+                    <Input
+                      id="minutes"
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={goalMinutes}
+                      onChange={(e) => setGoalMinutes(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button onClick={handleSaveGoal} className="w-full">
+                  Save Goal
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        
+        {/* Progress bar */}
+        <div className="relative">
+          <div className="h-3 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                todayProgress >= 100 ? "bg-green-500" : "bg-primary"
+              )}
+              style={{ width: `${todayProgress}%` }}
+            />
+          </div>
+          {todayProgress >= 100 && (
+            <div className="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5">
+              <Check className="h-3 w-3 text-white" />
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          {todayProgress >= 100 
+            ? "Goal achieved! Great job!" 
+            : `${Math.round(todayProgress)}% complete`}
+        </p>
+      </Card>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
+          <div className="flex flex-col items-center text-center">
+            <div className="p-2 rounded-xl bg-primary/20 mb-2">
+              <Flame className="h-5 w-5 text-primary" />
+            </div>
+            <p className="text-xs text-muted-foreground">Streak</p>
+            <p className="text-xl font-bold text-foreground">{currentStreak}</p>
           </div>
         </Card>
 
         <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-accent/20">
+          <div className="flex flex-col items-center text-center">
+            <div className="p-2 rounded-xl bg-green-500/20 mb-2">
+              <Check className="h-5 w-5 text-green-500" />
+            </div>
+            <p className="text-xs text-muted-foreground">Goals Met</p>
+            <p className="text-xl font-bold text-foreground">{daysGoalMet}</p>
+          </div>
+        </Card>
+
+        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
+          <div className="flex flex-col items-center text-center">
+            <div className="p-2 rounded-xl bg-accent/20 mb-2">
               <Clock className="h-5 w-5 text-accent-foreground" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">This Month</p>
-              <p className="text-2xl font-bold text-foreground">{formatTime(monthTotal)}</p>
-            </div>
+            <p className="text-xs text-muted-foreground">This Month</p>
+            <p className="text-xl font-bold text-foreground">{formatTimeShort(monthTotal)}</p>
           </div>
         </Card>
       </div>
@@ -215,6 +378,7 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
             const isCurrentMonth = isSameMonth(day, currentMonth);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const isTodayDate = isToday(day);
+            const goalMet = dayTime >= dailyGoalMs;
 
             return (
               <button
@@ -225,6 +389,7 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
                   !isCurrentMonth && "opacity-30",
                   isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
                   isTodayDate && !isSelected && "ring-1 ring-primary/50",
+                  goalMet && "bg-green-500/10",
                   "hover:bg-secondary/50"
                 )}
               >
@@ -232,18 +397,23 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
                   className={cn(
                     "text-sm font-medium",
                     isTodayDate && "text-primary font-bold",
-                    !isTodayDate && "text-foreground"
+                    goalMet && !isTodayDate && "text-green-500",
+                    !isTodayDate && !goalMet && "text-foreground"
                   )}
                 >
                   {format(day, "d")}
                 </span>
                 {dayTime > 0 && (
-                  <div
-                    className={cn(
-                      "w-6 h-1.5 rounded-full transition-all",
-                      getIntensity(dayTime)
-                    )}
-                  />
+                  goalMet ? (
+                    <Check className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <div
+                      className={cn(
+                        "w-6 h-1.5 rounded-full transition-all",
+                        getIntensity(dayTime)
+                      )}
+                    />
+                  )
                 )}
               </button>
             );
@@ -251,15 +421,15 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-center gap-2 mt-6 text-xs text-muted-foreground">
-          <span>Less</span>
-          <div className="flex gap-1">
-            <div className="w-3 h-3 rounded bg-primary/20" />
-            <div className="w-3 h-3 rounded bg-primary/40" />
-            <div className="w-3 h-3 rounded bg-primary/60" />
-            <div className="w-3 h-3 rounded bg-primary/90" />
+        <div className="flex items-center justify-center gap-4 mt-6 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Check className="h-3 w-3 text-green-500" />
+            <span>Goal met</span>
           </div>
-          <span>More</span>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-1.5 rounded-full bg-primary/60" />
+            <span>Activity</span>
+          </div>
         </div>
       </Card>
 
