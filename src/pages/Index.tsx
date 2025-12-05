@@ -1,6 +1,7 @@
 import { Stopwatch } from "@/components/Stopwatch";
 import { History } from "@/components/History";
 import { Tasks } from "@/components/Tasks";
+import { CalendarProgress } from "@/components/CalendarProgress";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Timer } from "lucide-react";
@@ -24,15 +25,18 @@ const Index = () => {
         </div>
 
         <Tabs defaultValue="stopwatch" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8 bg-secondary/50 backdrop-blur-lg">
-            <TabsTrigger value="stopwatch" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsList className="grid w-full max-w-lg mx-auto grid-cols-4 mb-8 bg-secondary/50 backdrop-blur-lg">
+            <TabsTrigger value="stopwatch" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">
               Stopwatch
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="tasks" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">
               Tasks
             </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              History ({history.length})
+            <TabsTrigger value="calendar" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">
+              Calendar
+            </TabsTrigger>
+            <TabsTrigger value="history" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">
+              History
             </TabsTrigger>
           </TabsList>
 
@@ -42,6 +46,10 @@ const Index = () => {
 
           <TabsContent value="tasks" className="mt-6">
             <Tasks />
+          </TabsContent>
+
+          <TabsContent value="calendar" className="mt-6">
+            <CalendarProgress sessions={history} />
           </TabsContent>
 
           <TabsContent value="history" className="mt-6">
