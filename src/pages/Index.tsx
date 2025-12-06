@@ -7,11 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Timer } from "lucide-react";
 import { useHistorySync } from "@/hooks/useHistorySync";
 import { useStopwatchSync } from "@/hooks/useStopwatchSync";
+import { useTasksSync } from "@/hooks/useTasksSync";
 
 const Index = () => {
   const { history, handleUpdateSessionName, handleDeleteSession, handleClearHistory } = useHistorySync();
   const { time: currentStopwatchTime, isRunning: isStopwatchRunning } = useStopwatchSync();
-
+  const { tasks } = useTasksSync();
   return (
     <div className="min-h-screen bg-gradient-primary">
       <InstallPrompt />
@@ -53,6 +54,7 @@ const Index = () => {
           <TabsContent value="calendar" className="mt-6">
             <CalendarProgress 
               sessions={history} 
+              tasks={tasks}
               currentStopwatchTime={currentStopwatchTime}
               isStopwatchRunning={isStopwatchRunning}
             />
