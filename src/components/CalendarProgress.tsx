@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDailyGoal } from "@/hooks/useDailyGoal";
+import { Task } from "@/hooks/useTasksSync";
 
 interface LapTime {
   id: number;
@@ -39,16 +40,19 @@ interface HistorySession {
   laps: LapTime[];
   date: string;
   name?: string;
+  task_id?: string | null;
 }
 
 interface CalendarProgressProps {
   sessions: HistorySession[];
+  tasks?: Task[];
   currentStopwatchTime?: number;
   isStopwatchRunning?: boolean;
 }
 
 export const CalendarProgress = ({ 
   sessions, 
+  tasks = [],
   currentStopwatchTime = 0,
   isStopwatchRunning = false 
 }: CalendarProgressProps) => {
@@ -187,6 +191,45 @@ export const CalendarProgress = ({
   }, [timeByDay, currentStopwatchTime]);
 
   const todayProgress = Math.min((todayTime / dailyGoalMs) * 100, 100);
+
+  // Get task breakdown for today
+  const todayTaskBreakdown = useMemo(() => {
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    const taskTimeMap = new Map<string | null, number>();
+    
+    sessions.forEach((session) => {
+      const sessionDate = new Date(session.date);
+      if (sessionDate >= todayStart && sessionDate < todayEnd) {
+        const taskId = session.task_id || null;
+        taskTimeMap.set(taskId, (taskTimeMap.get(taskId) || 0) + session.time);
+      }
+    });
+
+    const breakdown: { taskId: string | null; taskName: string; time: number }[] = [];
+    
+    taskTimeMap.forEach((time, taskId) => {
+      if (taskId) {
+        const task = tasks.find(t => t.id === taskId);
+        breakdown.push({
+          taskId,
+          taskName: task?.name || "Unknown Task",
+          time,
+        });
+      } else {
+        breakdown.push({
+          taskId: null,
+          taskName: "Unassigned",
+          time,
+        });
+      }
+    });
+
+    // Sort by time descending
+    return breakdown.sort((a, b) => b.time - a.time);
+  }, [sessions, tasks]);
 
   // Weekly progress - cumulative from start of current week (includes current stopwatch time)
   const weeklyProgress = useMemo(() => {
@@ -334,6 +377,33 @@ export const CalendarProgress = ({
             ? "Goal achieved! Great job!" 
             : `${Math.round(todayProgress)}% complete`}
         </p>
+
+        {/* Task Breakdown */}
+        {todayTaskBreakdown.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <p className="text-xs text-muted-foreground mb-3">Tasks contributing today</p>
+            <div className="space-y-2">
+              {todayTaskBreakdown.map((item, index) => (
+                <div key={item.taskId || 'unassigned'} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        item.taskId ? "bg-primary" : "bg-muted-foreground"
+                      )}
+                    />
+                    <span className="text-sm text-foreground truncate max-w-[180px]">
+                      {item.taskName}
+                    </span>
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {formatTime(item.time)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Weekly Progress Card */}
