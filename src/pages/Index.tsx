@@ -6,9 +6,11 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Timer } from "lucide-react";
 import { useHistorySync } from "@/hooks/useHistorySync";
+import { useStopwatchSync } from "@/hooks/useStopwatchSync";
 
 const Index = () => {
   const { history, handleUpdateSessionName, handleDeleteSession, handleClearHistory } = useHistorySync();
+  const { time: currentStopwatchTime, isRunning: isStopwatchRunning } = useStopwatchSync();
 
   return (
     <div className="min-h-screen bg-gradient-primary">
@@ -49,7 +51,11 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-6">
-            <CalendarProgress sessions={history} />
+            <CalendarProgress 
+              sessions={history} 
+              currentStopwatchTime={currentStopwatchTime}
+              isStopwatchRunning={isStopwatchRunning}
+            />
           </TabsContent>
 
           <TabsContent value="history" className="mt-6">

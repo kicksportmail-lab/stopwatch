@@ -43,9 +43,15 @@ interface HistorySession {
 
 interface CalendarProgressProps {
   sessions: HistorySession[];
+  currentStopwatchTime?: number;
+  isStopwatchRunning?: boolean;
 }
 
-export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
+export const CalendarProgress = ({ 
+  sessions, 
+  currentStopwatchTime = 0,
+  isStopwatchRunning = false 
+}: CalendarProgressProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
@@ -172,17 +178,20 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
     return `${minutes}m`;
   };
 
-  // Today's progress
+  // Today's progress - include current stopwatch time
   const todayTime = useMemo(() => {
     const todayKey = format(new Date(), "yyyy-MM-dd");
-    return timeByDay.get(todayKey) || 0;
-  }, [timeByDay]);
+    const savedTime = timeByDay.get(todayKey) || 0;
+    // Add current stopwatch time if running
+    return savedTime + currentStopwatchTime;
+  }, [timeByDay, currentStopwatchTime]);
 
   const todayProgress = Math.min((todayTime / dailyGoalMs) * 100, 100);
 
-  // Weekly progress - cumulative from start of current week
+  // Weekly progress - cumulative from start of current week (includes current stopwatch time)
   const weeklyProgress = useMemo(() => {
     const today = new Date();
+    const todayKey = format(today, "yyyy-MM-dd");
     const weekStart = startOfWeek(today);
     const weekEnd = endOfWeek(today);
     const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -193,15 +202,21 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
       totalWeekTime += timeByDay.get(dayKey) || 0;
     });
     
+    // Add current stopwatch time to week total
+    totalWeekTime += currentStopwatchTime;
+    
     return {
       time: totalWeekTime,
       percentage: Math.min((totalWeekTime / weeklyGoalMs) * 100, 100),
       daysTracked: weekDays.filter(day => {
         const dayKey = format(day, "yyyy-MM-dd");
-        return (timeByDay.get(dayKey) || 0) > 0;
+        const dayTime = timeByDay.get(dayKey) || 0;
+        // Include today if stopwatch is running
+        if (dayKey === todayKey && currentStopwatchTime > 0) return true;
+        return dayTime > 0;
       }).length,
     };
-  }, [timeByDay, weeklyGoalMs]);
+  }, [timeByDay, weeklyGoalMs, currentStopwatchTime]);
 
   const handleSaveGoal = () => {
     const hours = parseInt(goalHours) || 0;
