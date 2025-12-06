@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, Settings2, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   format,
@@ -52,7 +52,7 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
   const [goalHours, setGoalHours] = useState("1");
   const [goalMinutes, setGoalMinutes] = useState("0");
   
-  const { dailyGoalMs, updateDailyGoal } = useDailyGoal();
+  const { dailyGoalMs, weeklyGoalMs, updateDailyGoal } = useDailyGoal();
 
   // Aggregate time by day
   const timeByDay = useMemo(() => {
@@ -180,6 +180,29 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
 
   const todayProgress = Math.min((todayTime / dailyGoalMs) * 100, 100);
 
+  // Weekly progress - cumulative from start of current week
+  const weeklyProgress = useMemo(() => {
+    const today = new Date();
+    const weekStart = startOfWeek(today);
+    const weekEnd = endOfWeek(today);
+    const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+    
+    let totalWeekTime = 0;
+    weekDays.forEach((day) => {
+      const dayKey = format(day, "yyyy-MM-dd");
+      totalWeekTime += timeByDay.get(dayKey) || 0;
+    });
+    
+    return {
+      time: totalWeekTime,
+      percentage: Math.min((totalWeekTime / weeklyGoalMs) * 100, 100),
+      daysTracked: weekDays.filter(day => {
+        const dayKey = format(day, "yyyy-MM-dd");
+        return (timeByDay.get(dayKey) || 0) > 0;
+      }).length,
+    };
+  }, [timeByDay, weeklyGoalMs]);
+
   const handleSaveGoal = () => {
     const hours = parseInt(goalHours) || 0;
     const minutes = parseInt(goalMinutes) || 0;
@@ -295,6 +318,49 @@ export const CalendarProgress = ({ sessions }: CalendarProgressProps) => {
           {todayProgress >= 100 
             ? "Goal achieved! Great job!" 
             : `${Math.round(todayProgress)}% complete`}
+        </p>
+      </Card>
+
+      {/* Weekly Progress Card */}
+      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-accent/20">
+              <CalendarDays className="h-5 w-5 text-accent-foreground" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">This Week</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatTime(weeklyProgress.time)} / {formatTime(weeklyGoalMs)}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">{weeklyProgress.daysTracked}/7 days tracked</p>
+          </div>
+        </div>
+        
+        {/* Weekly progress bar */}
+        <div className="relative">
+          <div className="h-3 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                weeklyProgress.percentage >= 100 ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-primary to-primary/70"
+              )}
+              style={{ width: `${weeklyProgress.percentage}%` }}
+            />
+          </div>
+          {weeklyProgress.percentage >= 100 && (
+            <div className="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5">
+              <Check className="h-3 w-3 text-white" />
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          {weeklyProgress.percentage >= 100 
+            ? "Weekly goal achieved! Amazing work!" 
+            : `${Math.round(weeklyProgress.percentage)}% of weekly goal`}
         </p>
       </Card>
 

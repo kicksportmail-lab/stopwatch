@@ -5,6 +5,7 @@ const FIXED_GOAL_ID = "00000000-0000-0000-0000-000000000001";
 
 export const useDailyGoal = () => {
   const [dailyGoalMs, setDailyGoalMs] = useState<number>(3600000); // Default 1 hour
+  const [weeklyGoalMs, setWeeklyGoalMs] = useState<number>(25200000); // Default 7 hours (7 * 1 hour)
   const [isLoading, setIsLoading] = useState(true);
 
   // Load initial goal
@@ -14,10 +15,12 @@ export const useDailyGoal = () => {
         .from("daily_goals")
         .select("*")
         .eq("id", FIXED_GOAL_ID)
-        .single();
+        .maybeSingle();
 
       if (data && !error) {
         setDailyGoalMs(data.target_ms);
+        // Weekly goal is 7x daily by default, but we can calculate it
+        setWeeklyGoalMs(data.target_ms * 7);
       }
       setIsLoading(false);
     };
@@ -39,7 +42,9 @@ export const useDailyGoal = () => {
         },
         (payload) => {
           if (payload.new && "target_ms" in payload.new) {
-            setDailyGoalMs(payload.new.target_ms as number);
+            const newMs = payload.new.target_ms as number;
+            setDailyGoalMs(newMs);
+            setWeeklyGoalMs(newMs * 7);
           }
         }
       )
@@ -52,6 +57,7 @@ export const useDailyGoal = () => {
 
   const updateDailyGoal = async (newGoalMs: number) => {
     setDailyGoalMs(newGoalMs);
+    setWeeklyGoalMs(newGoalMs * 7);
 
     const { error } = await supabase
       .from("daily_goals")
@@ -70,6 +76,7 @@ export const useDailyGoal = () => {
 
   return {
     dailyGoalMs,
+    weeklyGoalMs,
     updateDailyGoal,
     isLoading,
   };
