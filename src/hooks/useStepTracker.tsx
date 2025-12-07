@@ -456,12 +456,15 @@ export const useStepTracker = () => {
     },
   ];
 
-  // Load data on mount
+  // Load data and auto-start tracking on mount
   useEffect(() => {
     loadTodayData();
     loadWeeklyData();
     loadMonthlyData();
     loadAllTimeData();
+    
+    // Auto-start step tracking
+    startTracking();
   }, [loadTodayData, loadWeeklyData, loadMonthlyData, loadAllTimeData]);
 
   // Realtime sync

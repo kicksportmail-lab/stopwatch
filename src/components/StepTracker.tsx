@@ -18,8 +18,6 @@ import {
   MapPin, 
   Flame, 
   Target, 
-  Play, 
-  Pause, 
   Settings,
   TrendingUp,
   Calendar,
@@ -38,7 +36,6 @@ export const StepTracker = () => {
     distance,
     calories,
     progressPercentage,
-    isTracking,
     isLoading,
     sensorAvailable,
     weeklySteps,
@@ -54,8 +51,6 @@ export const StepTracker = () => {
     currentStreak,
     totalAllTimeSteps,
     achievements,
-    startTracking,
-    stopTracking,
     updateStepGoal,
     addStepsManually,
     resetTodaySteps,
@@ -180,29 +175,6 @@ export const StepTracker = () => {
 
           {/* Action Buttons */}
           <div className="flex gap-3 justify-center flex-wrap">
-            <Button
-              onClick={isTracking ? stopTracking : startTracking}
-              className={cn(
-                "gap-2",
-                isTracking 
-                  ? "bg-destructive hover:bg-destructive/90" 
-                  : "bg-gradient-accent hover:opacity-90"
-              )}
-              disabled={!sensorAvailable}
-            >
-              {isTracking ? (
-                <>
-                  <Pause className="h-4 w-4" />
-                  Stop Tracking
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" />
-                  Start Tracking
-                </>
-              )}
-            </Button>
-
             <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2">
