@@ -383,7 +383,9 @@ export const CalendarProgress = ({
           <div className="mt-4 pt-4 border-t border-border/50">
             <p className="text-xs text-muted-foreground mb-3">Tasks contributing today</p>
             <div className="space-y-2">
-              {todayTaskBreakdown.map((item, index) => (
+              {todayTaskBreakdown.map((item, index) => {
+                const percentage = dailyGoalMs > 0 ? Math.round((item.time / dailyGoalMs) * 100) : 0;
+                return (
                 <div key={item.taskId || 'unassigned'} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div 
@@ -392,15 +394,19 @@ export const CalendarProgress = ({
                         item.taskId ? "bg-primary" : "bg-muted-foreground"
                       )}
                     />
-                    <span className="text-sm text-foreground truncate max-w-[180px]">
+                    <span className="text-sm text-foreground truncate max-w-[140px]">
                       {item.taskName}
+                    </span>
+                    <span className="text-xs text-primary font-medium">
+                      {percentage}%
                     </span>
                   </div>
                   <span className="text-sm font-medium text-muted-foreground">
                     {formatTime(item.time)}
                   </span>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
