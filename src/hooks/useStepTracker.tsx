@@ -6,6 +6,12 @@ const FIXED_USER_ID = "00000000-0000-0000-0000-000000000001";
 const STEP_LENGTH_METERS = 0.762; // Average step length
 const CALORIES_PER_STEP = 0.04; // Approximate calories burned per step
 
+// Step detection constants - calibrated for realistic walking
+const STEP_THRESHOLD = 10.5; // Higher threshold for real walking motion
+const MIN_STEP_INTERVAL = 400; // Minimum 400ms between steps (max ~150 steps/min)
+const MAX_STEP_INTERVAL = 2000; // Maximum 2s between steps for continuous walking
+const SMOOTHING_FACTOR = 0.3; // Low-pass filter for noise reduction
+
 interface StepData {
   date: string;
   steps: number;
@@ -18,18 +24,35 @@ interface DeviceMotionEventWithPermission extends DeviceMotionEvent {
   requestPermission?: () => Promise<"granted" | "denied" | "default">;
 }
 
+// Achievement definitions
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlockedAt?: string;
+  progress?: number;
+  target?: number;
+}
+
 export const useStepTracker = () => {
   const [todaySteps, setTodaySteps] = useState(0);
   const [stepGoal, setStepGoal] = useState(10000);
   const [isTracking, setIsTracking] = useState(false);
   const [weeklyData, setWeeklyData] = useState<StepData[]>([]);
   const [monthlyData, setMonthlyData] = useState<StepData[]>([]);
+  const [allTimeData, setAllTimeData] = useState<StepData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sensorAvailable, setSensorAvailable] = useState(true);
   
+  // Improved step detection refs
   const lastAcceleration = useRef({ x: 0, y: 0, z: 0 });
-  const stepThreshold = useRef(1.2);
+  const smoothedMagnitude = useRef(0);
   const lastStepTime = useRef(0);
+  const isPeakPhase = useRef(false);
+  const peakValue = useRef(0);
+  const valleyValue = useRef(Infinity);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const todayDate = format(new Date(), "yyyy-MM-dd");
@@ -104,6 +127,19 @@ export const useStepTracker = () => {
     }
   }, []);
 
+  // Load all-time data for achievements
+  const loadAllTimeData = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("step_tracking")
+      .select("*")
+      .eq("user_id", FIXED_USER_ID)
+      .order("date", { ascending: true });
+
+    if (data && !error) {
+      setAllTimeData(data as StepData[]);
+    }
+  }, []);
+
   // Save step data with debounce
   const saveStepData = useCallback(async (steps: number) => {
     if (saveTimeoutRef.current) {
@@ -149,31 +185,67 @@ export const useStepTracker = () => {
       );
   };
 
-  // Step detection algorithm
+  // Improved step detection algorithm using peak detection
   const detectStep = useCallback((acceleration: { x: number; y: number; z: number }) => {
     const now = Date.now();
     const timeSinceLastStep = now - lastStepTime.current;
     
-    // Minimum time between steps (prevents double counting)
-    if (timeSinceLastStep < 250) return;
-
+    // Calculate magnitude of acceleration vector
     const { x, y, z } = acceleration;
-    const last = lastAcceleration.current;
+    const magnitude = Math.sqrt(x * x + y * y + z * z);
     
-    // Calculate magnitude of acceleration change
-    const delta = Math.sqrt(
-      Math.pow(x - last.x, 2) + 
-      Math.pow(y - last.y, 2) + 
-      Math.pow(z - last.z, 2)
-    );
-
-    if (delta > stepThreshold.current) {
-      setTodaySteps(prev => {
-        const newSteps = prev + 1;
-        saveStepData(newSteps);
-        return newSteps;
-      });
-      lastStepTime.current = now;
+    // Apply low-pass filter to smooth out noise
+    smoothedMagnitude.current = 
+      SMOOTHING_FACTOR * magnitude + 
+      (1 - SMOOTHING_FACTOR) * smoothedMagnitude.current;
+    
+    const smoothed = smoothedMagnitude.current;
+    
+    // Peak detection algorithm
+    if (isPeakPhase.current) {
+      // Looking for peak
+      if (smoothed > peakValue.current) {
+        peakValue.current = smoothed;
+      } else if (smoothed < peakValue.current - 1.5) {
+        // Found peak, now looking for valley
+        isPeakPhase.current = false;
+        valleyValue.current = smoothed;
+      }
+    } else {
+      // Looking for valley
+      if (smoothed < valleyValue.current) {
+        valleyValue.current = smoothed;
+      } else if (smoothed > valleyValue.current + 1.5) {
+        // Found valley, check if this constitutes a valid step
+        const peakToValley = peakValue.current - valleyValue.current;
+        
+        // Valid step: sufficient amplitude and timing
+        if (
+          peakToValley > STEP_THRESHOLD &&
+          timeSinceLastStep > MIN_STEP_INTERVAL &&
+          timeSinceLastStep < MAX_STEP_INTERVAL
+        ) {
+          setTodaySteps(prev => {
+            const newSteps = prev + 1;
+            saveStepData(newSteps);
+            return newSteps;
+          });
+          lastStepTime.current = now;
+        } else if (timeSinceLastStep >= MAX_STEP_INTERVAL && peakToValley > STEP_THRESHOLD) {
+          // First step after pause - more lenient timing
+          setTodaySteps(prev => {
+            const newSteps = prev + 1;
+            saveStepData(newSteps);
+            return newSteps;
+          });
+          lastStepTime.current = now;
+        }
+        
+        // Reset for next cycle
+        isPeakPhase.current = true;
+        peakValue.current = smoothed;
+        valleyValue.current = Infinity;
+      }
     }
 
     lastAcceleration.current = { x, y, z };
@@ -247,12 +319,150 @@ export const useStepTracker = () => {
       );
   };
 
+  // Calculate achievements
+  const totalAllTimeSteps = allTimeData.reduce((sum, d) => sum + d.steps, 0) + todaySteps;
+  
+  // Calculate current streak (consecutive days meeting goal)
+  const calculateStreak = useCallback(() => {
+    const sortedData = [...allTimeData].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    let streak = 0;
+    const today = format(new Date(), "yyyy-MM-dd");
+    
+    // Check if today's goal is met
+    if (todaySteps >= stepGoal) {
+      streak = 1;
+    }
+    
+    // Count consecutive days before today
+    for (let i = 0; i < sortedData.length; i++) {
+      const data = sortedData[i];
+      if (data.date === today) continue;
+      
+      if (data.steps >= data.step_goal) {
+        // Check if this day is consecutive
+        const expectedDate = format(
+          new Date(Date.now() - (streak + 1) * 24 * 60 * 60 * 1000),
+          "yyyy-MM-dd"
+        );
+        if (data.date === expectedDate) {
+          streak++;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  }, [allTimeData, todaySteps, stepGoal]);
+
+  const currentStreak = calculateStreak();
+
+  // Generate achievements
+  const achievements: Achievement[] = [
+    {
+      id: "first_steps",
+      name: "First Steps",
+      description: "Track your first 100 steps",
+      icon: "👶",
+      unlocked: totalAllTimeSteps >= 100,
+      progress: Math.min(totalAllTimeSteps, 100),
+      target: 100,
+    },
+    {
+      id: "daily_goal",
+      name: "Goal Getter",
+      description: "Reach your daily step goal",
+      icon: "🎯",
+      unlocked: todaySteps >= stepGoal,
+      progress: todaySteps,
+      target: stepGoal,
+    },
+    {
+      id: "streak_3",
+      name: "3-Day Streak",
+      description: "Meet your goal 3 days in a row",
+      icon: "🔥",
+      unlocked: currentStreak >= 3,
+      progress: currentStreak,
+      target: 3,
+    },
+    {
+      id: "streak_7",
+      name: "Week Warrior",
+      description: "Meet your goal 7 days in a row",
+      icon: "⚡",
+      unlocked: currentStreak >= 7,
+      progress: currentStreak,
+      target: 7,
+    },
+    {
+      id: "streak_30",
+      name: "Monthly Master",
+      description: "Meet your goal 30 days in a row",
+      icon: "👑",
+      unlocked: currentStreak >= 30,
+      progress: currentStreak,
+      target: 30,
+    },
+    {
+      id: "steps_10k",
+      name: "10K Club",
+      description: "Walk 10,000 total steps",
+      icon: "🏃",
+      unlocked: totalAllTimeSteps >= 10000,
+      progress: Math.min(totalAllTimeSteps, 10000),
+      target: 10000,
+    },
+    {
+      id: "steps_50k",
+      name: "50K Explorer",
+      description: "Walk 50,000 total steps",
+      icon: "🌟",
+      unlocked: totalAllTimeSteps >= 50000,
+      progress: Math.min(totalAllTimeSteps, 50000),
+      target: 50000,
+    },
+    {
+      id: "steps_100k",
+      name: "Century Walker",
+      description: "Walk 100,000 total steps",
+      icon: "💎",
+      unlocked: totalAllTimeSteps >= 100000,
+      progress: Math.min(totalAllTimeSteps, 100000),
+      target: 100000,
+    },
+    {
+      id: "steps_500k",
+      name: "Half Million",
+      description: "Walk 500,000 total steps",
+      icon: "🏆",
+      unlocked: totalAllTimeSteps >= 500000,
+      progress: Math.min(totalAllTimeSteps, 500000),
+      target: 500000,
+    },
+    {
+      id: "steps_1m",
+      name: "Million Steps",
+      description: "Walk 1,000,000 total steps",
+      icon: "🌈",
+      unlocked: totalAllTimeSteps >= 1000000,
+      progress: Math.min(totalAllTimeSteps, 1000000),
+      target: 1000000,
+    },
+  ];
+
   // Load data on mount
   useEffect(() => {
     loadTodayData();
     loadWeeklyData();
     loadMonthlyData();
-  }, [loadTodayData, loadWeeklyData, loadMonthlyData]);
+    loadAllTimeData();
+  }, [loadTodayData, loadWeeklyData, loadMonthlyData, loadAllTimeData]);
 
   // Realtime sync
   useEffect(() => {
@@ -277,7 +487,7 @@ export const useStepTracker = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadTodayData, loadWeeklyData, loadMonthlyData]);
+  }, [loadTodayData, loadWeeklyData, loadMonthlyData, loadAllTimeData]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -309,6 +519,9 @@ export const useStepTracker = () => {
     monthlyAverage,
     monthlyData,
     daysGoalMet,
+    currentStreak,
+    totalAllTimeSteps,
+    achievements,
     startTracking,
     stopTracking,
     updateStepGoal,
