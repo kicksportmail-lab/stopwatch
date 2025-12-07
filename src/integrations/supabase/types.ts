@@ -38,6 +38,42 @@ export type Database = {
         }
         Relationships: []
       }
+      step_tracking: {
+        Row: {
+          calories_burned: number
+          created_at: string
+          date: string
+          distance_meters: number
+          id: string
+          step_goal: number
+          steps: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calories_burned?: number
+          created_at?: string
+          date?: string
+          distance_meters?: number
+          id?: string
+          step_goal?: number
+          steps?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          calories_burned?: number
+          created_at?: string
+          date?: string
+          distance_meters?: number
+          id?: string
+          step_goal?: number
+          steps?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stopwatch_sessions: {
         Row: {
           created_at: string
