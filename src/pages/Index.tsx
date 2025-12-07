@@ -2,9 +2,10 @@ import { Stopwatch } from "@/components/Stopwatch";
 import { History } from "@/components/History";
 import { Tasks } from "@/components/Tasks";
 import { CalendarProgress } from "@/components/CalendarProgress";
+import { StepTracker } from "@/components/StepTracker";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Timer } from "lucide-react";
+import { Timer, Footprints } from "lucide-react";
 import { useHistorySync } from "@/hooks/useHistorySync";
 import { useStopwatchSync } from "@/hooks/useStopwatchSync";
 import { useTasksSync } from "@/hooks/useTasksSync";
@@ -28,9 +29,13 @@ const Index = () => {
         </div>
 
         <Tabs defaultValue="stopwatch" className="w-full">
-          <TabsList className="grid w-full max-w-lg mx-auto grid-cols-4 mb-8 bg-secondary/50 backdrop-blur-lg">
+          <TabsList className="grid w-full max-w-xl mx-auto grid-cols-5 mb-8 bg-secondary/50 backdrop-blur-lg">
             <TabsTrigger value="stopwatch" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">
               Stopwatch
+            </TabsTrigger>
+            <TabsTrigger value="steps" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">
+              <Footprints className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">Steps</span>
             </TabsTrigger>
             <TabsTrigger value="tasks" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs sm:text-sm">
               Tasks
@@ -45,6 +50,10 @@ const Index = () => {
 
           <TabsContent value="stopwatch" className="mt-6">
             <Stopwatch />
+          </TabsContent>
+
+          <TabsContent value="steps" className="mt-6">
+            <StepTracker />
           </TabsContent>
 
           <TabsContent value="tasks" className="mt-6">
