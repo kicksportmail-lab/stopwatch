@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStepTracker } from "@/hooks/useStepTracker";
+import { useStepTracker, Achievement } from "@/hooks/useStepTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -9,7 +9,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger 
+  DialogTrigger,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -24,7 +25,9 @@ import {
   Calendar,
   RotateCcw,
   Plus,
-  Smartphone
+  Smartphone,
+  Award,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +51,9 @@ export const StepTracker = () => {
     monthlyCalories,
     monthlyAverage,
     daysGoalMet,
+    currentStreak,
+    totalAllTimeSteps,
+    achievements,
     startTracking,
     stopTracking,
     updateStepGoal,
@@ -204,9 +210,12 @@ export const StepTracker = () => {
                   Set Goal
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent aria-describedby="goal-dialog-description">
                 <DialogHeader>
                   <DialogTitle>Set Daily Step Goal</DialogTitle>
+                  <DialogDescription id="goal-dialog-description">
+                    Choose your daily step target to track your walking progress.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <Input
@@ -270,9 +279,9 @@ export const StepTracker = () => {
         </CardContent>
       </Card>
 
-      {/* Weekly/Monthly Stats */}
+      {/* Weekly/Monthly/Achievements Stats */}
       <Tabs defaultValue="weekly" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-secondary/50">
+        <TabsList className="grid w-full grid-cols-3 bg-secondary/50">
           <TabsTrigger value="weekly" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <TrendingUp className="h-4 w-4" />
             Weekly
@@ -280,6 +289,10 @@ export const StepTracker = () => {
           <TabsTrigger value="monthly" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Calendar className="h-4 w-4" />
             Monthly
+          </TabsTrigger>
+          <TabsTrigger value="achievements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Award className="h-4 w-4" />
+            Awards
           </TabsTrigger>
         </TabsList>
 
@@ -383,6 +396,90 @@ export const StepTracker = () => {
                   value={(daysGoalMet / 30) * 100} 
                   className="h-2 mt-2" 
                 />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="achievements" className="mt-4 space-y-4">
+          {/* Streak Card */}
+          <Card className="bg-gradient-card backdrop-blur-xl border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-gradient-accent">
+                    <Zap className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Streak</p>
+                    <p className="text-2xl font-bold text-foreground">{currentStreak} days</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total Steps</p>
+                  <p className="text-lg font-semibold text-foreground">{formatNumber(totalAllTimeSteps)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Achievements Grid */}
+          <Card className="bg-gradient-card backdrop-blur-xl border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                Achievements
+                <span className="ml-auto text-sm font-normal text-muted-foreground">
+                  {achievements.filter(a => a.unlocked).length}/{achievements.length} unlocked
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                {achievements.map((achievement) => (
+                  <div
+                    key={achievement.id}
+                    className={cn(
+                      "p-3 rounded-xl border transition-all",
+                      achievement.unlocked
+                        ? "bg-primary/10 border-primary/30"
+                        : "bg-secondary/30 border-border/50 opacity-60"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">{achievement.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={cn(
+                            "font-semibold truncate",
+                            achievement.unlocked ? "text-foreground" : "text-muted-foreground"
+                          )}>
+                            {achievement.name}
+                          </p>
+                          {achievement.unlocked && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+                              Unlocked!
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {achievement.description}
+                        </p>
+                        {!achievement.unlocked && achievement.progress !== undefined && achievement.target && (
+                          <div className="mt-2">
+                            <Progress 
+                              value={(achievement.progress / achievement.target) * 100} 
+                              className="h-1.5" 
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatNumber(achievement.progress)} / {formatNumber(achievement.target)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
