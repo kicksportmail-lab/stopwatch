@@ -382,30 +382,46 @@ export const CalendarProgress = ({
         {todayTaskBreakdown.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border/50">
             <p className="text-xs text-muted-foreground mb-3">Tasks contributing today</p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {todayTaskBreakdown.map((item, index) => {
-                const percentage = dailyGoalMs > 0 ? Math.round((item.time / dailyGoalMs) * 100) : 0;
+                const percentage = dailyGoalMs > 0 ? Math.min(Math.round((item.time / dailyGoalMs) * 100), 100) : 0;
+                const taskColors = [
+                  "bg-primary",
+                  "bg-accent",
+                  "bg-chart-1",
+                  "bg-chart-2",
+                  "bg-chart-3",
+                  "bg-chart-4",
+                  "bg-chart-5",
+                ];
+                const colorClass = item.taskId ? taskColors[index % taskColors.length] : "bg-muted-foreground";
+                
                 return (
-                <div key={item.taskId || 'unassigned'} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className={cn(
-                        "w-2 h-2 rounded-full",
-                        item.taskId ? "bg-primary" : "bg-muted-foreground"
-                      )}
-                    />
-                    <span className="text-sm text-foreground truncate max-w-[140px]">
-                      {item.taskName}
-                    </span>
-                    <span className="text-xs text-primary font-medium">
-                      {percentage}%
-                    </span>
+                  <div key={item.taskId || 'unassigned'} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={cn("w-2 h-2 rounded-full", colorClass)} />
+                        <span className="text-sm text-foreground truncate max-w-[120px]">
+                          {item.taskName}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-primary font-medium">
+                          {percentage}%
+                        </span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {formatTime(item.time)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-muted/50 rounded-full overflow-hidden">
+                      <div 
+                        className={cn("h-full rounded-full transition-all duration-500", colorClass)}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {formatTime(item.time)}
-                  </span>
-                </div>
-              );
+                );
               })}
             </div>
           </div>
