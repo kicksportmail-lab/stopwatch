@@ -292,8 +292,8 @@ export const useStopwatchSync = () => {
   };
 
   const setTask = async (taskId: string | null) => {
-    // Save time to current task before switching
-    if (currentTaskId && currentTaskId !== taskId) {
+    // Save time to current task before switching to a DIFFERENT task
+    if (currentTaskId && taskId && currentTaskId !== taskId) {
       const timeSpent = time - taskStartTimeRef.current;
       if (timeSpent > 0) {
         const { data: task } = await supabase
@@ -314,10 +314,8 @@ export const useStopwatchSync = () => {
           }));
         }
       }
-    }
-    
-    // Reset stopwatch when switching to a new task
-    if (taskId && taskId !== currentTaskId) {
+      
+      // Reset stopwatch only when switching to a DIFFERENT task
       setTime(0);
       accumulatedTimeRef.current = 0;
       taskStartTimeRef.current = 0;
@@ -334,7 +332,7 @@ export const useStopwatchSync = () => {
         await syncState({ taskId, accumulatedTime: 0 });
       }
     } else {
-      // Deselecting task - just save state
+      // Deselecting or selecting same task - keep stopwatch time, just update task reference
       await syncState({ taskId });
     }
     
