@@ -82,6 +82,22 @@ export const useTasksSync = () => {
     loadTasks();
   }, [checkAndResetTasks]);
 
+  // Listen for optimistic task time updates (from switching tasks)
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ taskId: string; newTime: number }>) => {
+      const { taskId, newTime } = e.detail;
+      setTasks(current =>
+        current.map(t =>
+          t.id === taskId
+            ? { ...t, total_time_spent_ms: newTime }
+            : t
+        )
+      );
+    };
+    window.addEventListener('task-time-updated', handler as EventListener);
+    return () => window.removeEventListener('task-time-updated', handler as EventListener);
+  }, []);
+
   // Subscribe to real-time changes
   useEffect(() => {
     const channel = supabase
