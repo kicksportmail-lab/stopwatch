@@ -315,27 +315,12 @@ export const useStopwatchSync = () => {
         }
       }
       
-      // Reset stopwatch only when switching to a DIFFERENT task
-      setTime(0);
-      accumulatedTimeRef.current = 0;
-      taskStartTimeRef.current = 0;
-      
-      // If stopwatch was running, keep it running from 0
-      if (isRunning && startTimeRef.current) {
-        startTimeRef.current = Date.now();
-        await syncState({ 
-          taskId, 
-          accumulatedTime: 0, 
-          startTimestamp: startTimeRef.current 
-        });
-      } else {
-        await syncState({ taskId, accumulatedTime: 0 });
-      }
-    } else {
-      // Deselecting or selecting same task - keep stopwatch time, just update task reference
-      await syncState({ taskId });
+      // Update task start time reference for new task (don't reset stopwatch)
+      taskStartTimeRef.current = time;
     }
     
+    // Just update task reference, keep stopwatch running
+    await syncState({ taskId });
     setCurrentTaskId(taskId);
   };
 
