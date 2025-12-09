@@ -292,6 +292,25 @@ export const useStopwatchSync = () => {
   };
 
   const setTask = async (taskId: string | null) => {
+    // Save time to current task before switching
+    if (currentTaskId && currentTaskId !== taskId) {
+      const timeSpent = time - taskStartTimeRef.current;
+      if (timeSpent > 0) {
+        const { data: task } = await supabase
+          .from('tasks')
+          .select('total_time_spent_ms')
+          .eq('id', currentTaskId)
+          .single();
+        
+        if (task) {
+          await supabase
+            .from('tasks')
+            .update({ total_time_spent_ms: task.total_time_spent_ms + timeSpent })
+            .eq('id', currentTaskId);
+        }
+      }
+    }
+    
     setCurrentTaskId(taskId);
     taskStartTimeRef.current = time;
     await syncState({ taskId });
