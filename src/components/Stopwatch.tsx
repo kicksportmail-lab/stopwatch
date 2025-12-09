@@ -331,6 +331,16 @@ export const Stopwatch = () => {
               
               {/* Digital Display - Centered */}
               <div className="relative z-10 flex flex-col items-center">
+                {/* Active Task Badge */}
+                {currentTask && (
+                  <Badge 
+                    variant="secondary" 
+                    className="mb-2 px-3 py-1 text-xs font-medium bg-primary/20 text-primary border border-primary/30"
+                  >
+                    <Target className="h-3 w-3 mr-1.5" />
+                    {currentTask.name}
+                  </Badge>
+                )}
                 <div className={`text-5xl font-bold tracking-tight ${isRunning ? 'animate-pulse-glow' : ''}`}>
                   <div className="flex items-baseline">
                     <span className="text-foreground">{hours}</span>
