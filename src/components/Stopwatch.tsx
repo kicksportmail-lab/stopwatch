@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 
 export const Stopwatch = () => {
-  const { time, isRunning, laps, currentTaskId, handleStartStop, handleReset, handleLap, setTask } = useStopwatchSync();
+  const { time, isRunning, laps, currentTaskId, taskSessionTime, handleStartStop, handleReset, handleLap, setTask } = useStopwatchSync();
   const { tasks } = useTasksSync();
   const { playStartSound, playStopSound, playLapSound, playResetSound } = useSoundEffects();
   const [showNameDialog, setShowNameDialog] = useState(false);
@@ -186,11 +186,13 @@ export const Stopwatch = () => {
     resetStopwatch();
   };
 
-  const { hours, minutes, seconds, milliseconds } = formatTime(time);
+  // Display task session time when a task is active, otherwise show total time
+  const displayTime = currentTaskId ? taskSessionTime : time;
+  const { hours, minutes, seconds, milliseconds } = formatTime(displayTime);
 
   // Calculate dot position on the circle (completes rotation every 60 seconds)
   const getAnalogPosition = () => {
-    const totalSeconds = time / 1000;
+    const totalSeconds = displayTime / 1000;
     const angle = (totalSeconds % 60) * 6 - 90; // 6 degrees per second, -90 to start at top
     const radius = 130;
     const centerX = 150;
