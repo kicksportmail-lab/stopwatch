@@ -311,9 +311,29 @@ export const useStopwatchSync = () => {
       }
     }
     
+    // Reset stopwatch when switching to a new task
+    if (taskId && taskId !== currentTaskId) {
+      setTime(0);
+      accumulatedTimeRef.current = 0;
+      taskStartTimeRef.current = 0;
+      
+      // If stopwatch was running, keep it running from 0
+      if (isRunning && startTimeRef.current) {
+        startTimeRef.current = Date.now();
+        await syncState({ 
+          taskId, 
+          accumulatedTime: 0, 
+          startTimestamp: startTimeRef.current 
+        });
+      } else {
+        await syncState({ taskId, accumulatedTime: 0 });
+      }
+    } else {
+      // Deselecting task - just save state
+      await syncState({ taskId });
+    }
+    
     setCurrentTaskId(taskId);
-    taskStartTimeRef.current = time;
-    await syncState({ taskId });
   };
 
   return {
