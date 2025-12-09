@@ -307,6 +307,11 @@ export const useStopwatchSync = () => {
             .from('tasks')
             .update({ total_time_spent_ms: task.total_time_spent_ms + timeSpent })
             .eq('id', currentTaskId);
+          
+          // Dispatch event for optimistic UI update
+          window.dispatchEvent(new CustomEvent('task-time-updated', { 
+            detail: { taskId: currentTaskId, newTime: task.total_time_spent_ms + timeSpent } 
+          }));
         }
       }
     }
