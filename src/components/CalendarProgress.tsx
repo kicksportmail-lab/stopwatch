@@ -182,54 +182,34 @@ export const CalendarProgress = ({
     return `${minutes}m`;
   };
 
-  // Today's progress - include current stopwatch time
+  // Today's progress - use tasks' total_time_spent_ms (which resets daily) + current stopwatch time
   const todayTime = useMemo(() => {
-    const todayKey = format(new Date(), "yyyy-MM-dd");
-    const savedTime = timeByDay.get(todayKey) || 0;
+    // Sum all tasks' current time (tasks reset daily)
+    const tasksTime = tasks.reduce((sum, task) => sum + task.total_time_spent_ms, 0);
     // Add current stopwatch time if running
-    return savedTime + currentStopwatchTime;
-  }, [timeByDay, currentStopwatchTime]);
+    return tasksTime + currentStopwatchTime;
+  }, [tasks, currentStopwatchTime]);
 
   const todayProgress = Math.min((todayTime / dailyGoalMs) * 100, 100);
 
-  // Get task breakdown for today
+  // Get task breakdown for today - use tasks' total_time_spent_ms (resets daily)
   const todayTaskBreakdown = useMemo(() => {
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-
-    const taskTimeMap = new Map<string | null, number>();
-    
-    sessions.forEach((session) => {
-      const sessionDate = new Date(session.date);
-      if (sessionDate >= todayStart && sessionDate < todayEnd) {
-        const taskId = session.task_id || null;
-        taskTimeMap.set(taskId, (taskTimeMap.get(taskId) || 0) + session.time);
-      }
-    });
-
     const breakdown: { taskId: string | null; taskName: string; time: number }[] = [];
     
-    taskTimeMap.forEach((time, taskId) => {
-      if (taskId) {
-        const task = tasks.find(t => t.id === taskId);
+    // Use tasks' current total_time_spent_ms (which resets at midnight)
+    tasks.forEach((task) => {
+      if (task.total_time_spent_ms > 0) {
         breakdown.push({
-          taskId,
-          taskName: task?.name || "Unknown Task",
-          time,
-        });
-      } else {
-        breakdown.push({
-          taskId: null,
-          taskName: "Unassigned",
-          time,
+          taskId: task.id,
+          taskName: task.name,
+          time: task.total_time_spent_ms,
         });
       }
     });
 
     // Sort by time descending
     return breakdown.sort((a, b) => b.time - a.time);
-  }, [sessions, tasks]);
+  }, [tasks]);
 
   // Weekly progress - cumulative from start of current week (includes current stopwatch time)
   const weeklyProgress = useMemo(() => {
