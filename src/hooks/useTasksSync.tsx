@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { format, startOfDay, isToday, parseISO } from 'date-fns';
 
 export interface Task {
   id: string;
@@ -8,10 +9,57 @@ export interface Task {
   total_time_spent_ms: number;
   is_completed: boolean;
   created_at: string;
+  updated_at: string;
+  last_reset_date?: string;
 }
+
+const TASK_RESET_KEY = 'tasks_last_reset_date';
 
 export const useTasksSync = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  // Check if tasks need daily reset
+  const checkAndResetTasks = useCallback(async (loadedTasks: Task[]) => {
+    const todayKey = format(new Date(), 'yyyy-MM-dd');
+    const lastResetDate = localStorage.getItem(TASK_RESET_KEY);
+
+    // If already reset today, return tasks as-is
+    if (lastResetDate === todayKey) {
+      return loadedTasks;
+    }
+
+    // Reset all tasks for the new day
+    const tasksToReset = loadedTasks.filter(task => {
+      // Only reset if task was active (had time spent or was completed)
+      return task.total_time_spent_ms > 0 || task.is_completed;
+    });
+
+    if (tasksToReset.length > 0) {
+      // Reset tasks in database
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          total_time_spent_ms: 0,
+          is_completed: false,
+        })
+        .in('id', tasksToReset.map(t => t.id));
+
+      if (error) {
+        console.error('Error resetting tasks:', error);
+      } else {
+        // Update local state
+        loadedTasks = loadedTasks.map(task => ({
+          ...task,
+          total_time_spent_ms: 0,
+          is_completed: false,
+        }));
+      }
+    }
+
+    // Mark today as reset
+    localStorage.setItem(TASK_RESET_KEY, todayKey);
+    return loadedTasks;
+  }, []);
 
   // Load initial tasks
   useEffect(() => {
@@ -26,11 +74,13 @@ export const useTasksSync = () => {
         return;
       }
 
-      setTasks(data || []);
+      // Check and reset tasks if new day
+      const processedTasks = await checkAndResetTasks(data || []);
+      setTasks(processedTasks);
     };
 
     loadTasks();
-  }, []);
+  }, [checkAndResetTasks]);
 
   // Subscribe to real-time changes
   useEffect(() => {
