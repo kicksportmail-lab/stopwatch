@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 
 export const Tasks = () => {
   const { tasks, createTask, updateTask, deleteTask } = useTasksSync();
-  const { time, isRunning, currentTaskId: activeTaskId, setTask } = useStopwatchSync();
+  const { time, isRunning, currentTaskId: activeTaskId, taskSessionTime, setTask } = useStopwatchSync();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
   const [targetHours, setTargetHours] = useState('');
@@ -131,7 +131,8 @@ export const Tasks = () => {
         <div className="grid gap-4">
           {tasks.map((task) => {
             const isActiveTask = activeTaskId === task.id;
-            const displayTime = isActiveTask ? task.total_time_spent_ms + time : task.total_time_spent_ms;
+            const currentTaskTime = isActiveTask ? taskSessionTime : 0;
+            const displayTime = task.total_time_spent_ms + currentTaskTime;
             const progress = Math.min((displayTime / task.target_time_ms) * 100, 100);
             const overtime = displayTime > task.target_time_ms;
             
@@ -212,7 +213,7 @@ export const Tasks = () => {
                   {isActiveTask && isRunning && (
                     <div className="bg-primary/10 rounded-lg p-4 text-center">
                       <p className="text-xs text-muted-foreground mb-1">Current Session</p>
-                      <p className="font-mono text-3xl font-bold text-primary">{formatTime(time)}</p>
+                      <p className="font-mono text-3xl font-bold text-primary">{formatTime(taskSessionTime)}</p>
                     </div>
                   )}
                   <div className="space-y-3">

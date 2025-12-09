@@ -324,11 +324,15 @@ export const useStopwatchSync = () => {
     setCurrentTaskId(taskId);
   };
 
+  // Calculate time spent on current task in this session
+  const taskSessionTime = time - taskStartTimeRef.current;
+
   return {
     time,
     isRunning,
     laps,
     currentTaskId,
+    taskSessionTime,
     handleStartStop,
     handleReset,
     handleLap,
