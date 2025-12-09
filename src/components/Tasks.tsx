@@ -176,9 +176,25 @@ export const Tasks = () => {
                         <Button
                           variant={isActiveTask ? "default" : "outline"}
                           size="sm"
-                          onClick={() => setTask(isActiveTask ? '' : task.id)}
+                          onClick={() => setTask(isActiveTask ? null : task.id)}
+                          className="gap-1"
                         >
-                          {isActiveTask ? 'Deselect' : 'Select'}
+                          {isActiveTask ? (
+                            <>
+                              <Pause className="h-3 w-3" />
+                              Stop
+                            </>
+                          ) : activeTaskId ? (
+                            <>
+                              <Play className="h-3 w-3" />
+                              Switch
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-3 w-3" />
+                              Start
+                            </>
+                          )}
                         </Button>
                       )}
                       <Button
