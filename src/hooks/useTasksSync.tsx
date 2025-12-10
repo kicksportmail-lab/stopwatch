@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-
+import { toast } from '@/hooks/use-toast';
 export interface Task {
   id: string;
   name: string;
@@ -20,12 +20,14 @@ export const useTasksSync = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   // Save current stopwatch to history and reset for new day
-  const resetStopwatchForNewDay = useCallback(async () => {
+  // Returns true if data was saved to history
+  const resetStopwatchForNewDay = useCallback(async (): Promise<boolean> => {
     const todayKey = format(new Date(), 'yyyy-MM-dd');
     const lastStopwatchReset = localStorage.getItem(STOPWATCH_RESET_KEY);
+    let dataSaved = false;
 
     if (lastStopwatchReset === todayKey) {
-      return; // Already reset today
+      return false; // Already reset today
     }
 
     // First, get the current stopwatch state to save to history
@@ -61,6 +63,8 @@ export const useTasksSync = () => {
 
         if (historyError) {
           console.error('Error saving to history:', historyError);
+        } else {
+          dataSaved = true;
         }
       }
     }
@@ -82,6 +86,7 @@ export const useTasksSync = () => {
     }
 
     localStorage.setItem(STOPWATCH_RESET_KEY, todayKey);
+    return dataSaved;
   }, []);
 
   // Check if tasks need daily reset
@@ -96,6 +101,7 @@ export const useTasksSync = () => {
 
     // Reset ALL tasks for the new day (not just active ones)
     const allTaskIds = loadedTasks.map(t => t.id);
+    let dataSaved = false;
 
     if (allTaskIds.length > 0) {
       // Reset all tasks in database
@@ -119,8 +125,16 @@ export const useTasksSync = () => {
       }
     }
 
-    // Also reset stopwatch for new day
-    await resetStopwatchForNewDay();
+    // Also reset stopwatch for new day (returns true if data was saved)
+    dataSaved = await resetStopwatchForNewDay();
+
+    // Show toast notification for daily reset
+    toast({
+      title: "New Day Started",
+      description: dataSaved 
+        ? "Yesterday's progress was saved to history. Tasks and stopwatch have been reset."
+        : "Tasks and stopwatch have been reset for today.",
+    });
 
     // Mark today as reset
     localStorage.setItem(TASK_RESET_KEY, todayKey);
