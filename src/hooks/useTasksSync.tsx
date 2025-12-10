@@ -19,13 +19,50 @@ const STOPWATCH_RESET_KEY = 'stopwatch_last_reset_date';
 export const useTasksSync = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  // Reset stopwatch state for new day
+  // Save current stopwatch to history and reset for new day
   const resetStopwatchForNewDay = useCallback(async () => {
     const todayKey = format(new Date(), 'yyyy-MM-dd');
     const lastStopwatchReset = localStorage.getItem(STOPWATCH_RESET_KEY);
 
     if (lastStopwatchReset === todayKey) {
       return; // Already reset today
+    }
+
+    // First, get the current stopwatch state to save to history
+    const { data: stopwatchState, error: fetchError } = await supabase
+      .from('stopwatch_state')
+      .select('*')
+      .eq('id', '00000000-0000-0000-0000-000000000001')
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error fetching stopwatch state:', fetchError);
+    }
+
+    // Calculate total time and save to history if there was any time tracked
+    if (stopwatchState) {
+      let totalTime = stopwatchState.accumulated_time || 0;
+      
+      // If it was running, add elapsed time since start
+      if (stopwatchState.is_running && stopwatchState.start_timestamp) {
+        totalTime += Date.now() - stopwatchState.start_timestamp;
+      }
+
+      // Only save to history if there's time to save
+      if (totalTime > 0) {
+        const { error: historyError } = await supabase
+          .from('stopwatch_sessions')
+          .insert({
+            time: totalTime,
+            laps: stopwatchState.laps || [],
+            task_id: stopwatchState.task_id,
+            name: 'Auto-saved (day reset)',
+          });
+
+        if (historyError) {
+          console.error('Error saving to history:', historyError);
+        }
+      }
     }
 
     // Reset stopwatch state in database
