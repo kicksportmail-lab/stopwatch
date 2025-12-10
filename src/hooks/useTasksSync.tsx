@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfDay, isToday, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 
 export interface Task {
   id: string;
@@ -14,9 +14,38 @@ export interface Task {
 }
 
 const TASK_RESET_KEY = 'tasks_last_reset_date';
+const STOPWATCH_RESET_KEY = 'stopwatch_last_reset_date';
 
 export const useTasksSync = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  // Reset stopwatch state for new day
+  const resetStopwatchForNewDay = useCallback(async () => {
+    const todayKey = format(new Date(), 'yyyy-MM-dd');
+    const lastStopwatchReset = localStorage.getItem(STOPWATCH_RESET_KEY);
+
+    if (lastStopwatchReset === todayKey) {
+      return; // Already reset today
+    }
+
+    // Reset stopwatch state in database
+    const { error } = await supabase
+      .from('stopwatch_state')
+      .update({
+        accumulated_time: 0,
+        is_running: false,
+        start_timestamp: null,
+        laps: [],
+        task_id: null,
+      })
+      .eq('id', '00000000-0000-0000-0000-000000000001');
+
+    if (error) {
+      console.error('Error resetting stopwatch:', error);
+    }
+
+    localStorage.setItem(STOPWATCH_RESET_KEY, todayKey);
+  }, []);
 
   // Check if tasks need daily reset
   const checkAndResetTasks = useCallback(async (loadedTasks: Task[]) => {
@@ -28,26 +57,23 @@ export const useTasksSync = () => {
       return loadedTasks;
     }
 
-    // Reset all tasks for the new day
-    const tasksToReset = loadedTasks.filter(task => {
-      // Only reset if task was active (had time spent or was completed)
-      return task.total_time_spent_ms > 0 || task.is_completed;
-    });
+    // Reset ALL tasks for the new day (not just active ones)
+    const allTaskIds = loadedTasks.map(t => t.id);
 
-    if (tasksToReset.length > 0) {
-      // Reset tasks in database
+    if (allTaskIds.length > 0) {
+      // Reset all tasks in database
       const { error } = await supabase
         .from('tasks')
         .update({
           total_time_spent_ms: 0,
           is_completed: false,
         })
-        .in('id', tasksToReset.map(t => t.id));
+        .in('id', allTaskIds);
 
       if (error) {
         console.error('Error resetting tasks:', error);
       } else {
-        // Update local state
+        // Update local state - reset ALL tasks
         loadedTasks = loadedTasks.map(task => ({
           ...task,
           total_time_spent_ms: 0,
@@ -56,10 +82,13 @@ export const useTasksSync = () => {
       }
     }
 
+    // Also reset stopwatch for new day
+    await resetStopwatchForNewDay();
+
     // Mark today as reset
     localStorage.setItem(TASK_RESET_KEY, todayKey);
     return loadedTasks;
-  }, []);
+  }, [resetStopwatchForNewDay]);
 
   // Load initial tasks
   useEffect(() => {
