@@ -12,8 +12,8 @@ import { useTasksSync } from "@/hooks/useTasksSync";
 
 const Index = () => {
   const { history, handleUpdateSessionName, handleDeleteSession, handleClearHistory } = useHistorySync();
-  const { time: currentStopwatchTime, isRunning: isStopwatchRunning, currentTaskId, setTask, handleStartStop } = useStopwatchSync();
-  const { tasks } = useTasksSync();
+  const { time: currentStopwatchTime, isRunning: isStopwatchRunning, currentTaskId, taskSessionTime, setTask, handleStartStop } = useStopwatchSync();
+  const { tasks, createTask, updateTask, deleteTask } = useTasksSync();
   return (
     <div className="min-h-screen bg-gradient-primary">
       <InstallPrompt />
@@ -63,8 +63,12 @@ const Index = () => {
               currentStopwatchTime={currentStopwatchTime}
               isStopwatchRunning={isStopwatchRunning}
               currentTaskId={currentTaskId}
+              taskSessionTime={taskSessionTime}
               onSelectTask={setTask}
               onStartStopwatch={handleStartStop}
+              onCreateTask={createTask}
+              onUpdateTask={updateTask}
+              onDeleteTask={deleteTask}
             />
           </TabsContent>
 
