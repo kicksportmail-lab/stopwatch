@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, Settings2, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, Settings2, CalendarDays, Play, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   format,
@@ -424,6 +424,36 @@ export const CalendarProgress = ({
                         )}
                       </div>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.taskId) {
+                              if (!isActive) {
+                                onSelectTask?.(item.taskId);
+                              }
+                              if (isActive && isStopwatchRunning) {
+                                onStartStopwatch?.();
+                              } else if (!isStopwatchRunning) {
+                                if (!isActive) {
+                                  onSelectTask?.(item.taskId);
+                                }
+                                onStartStopwatch?.();
+                              }
+                            }
+                          }}
+                          className={cn(
+                            "p-1 rounded-full transition-all",
+                            isActive && isStopwatchRunning 
+                              ? "bg-primary/20 text-primary hover:bg-primary/30" 
+                              : "bg-muted hover:bg-primary/20 text-muted-foreground hover:text-primary"
+                          )}
+                        >
+                          {isActive && isStopwatchRunning ? (
+                            <Pause className="w-3.5 h-3.5" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5" />
+                          )}
+                        </button>
                         <span className={cn(
                           "text-xs font-medium",
                           taskPercentage >= 100 ? "text-green-500" : "text-primary"
