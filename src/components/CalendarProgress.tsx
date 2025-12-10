@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, Settings2, CalendarDays, Play, Pause } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, Settings2, CalendarDays, Play, Pause, Plus, Trash2, CheckCircle2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   format,
   startOfMonth,
@@ -19,6 +21,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -49,8 +52,12 @@ interface CalendarProgressProps {
   currentStopwatchTime?: number;
   isStopwatchRunning?: boolean;
   currentTaskId?: string | null;
+  taskSessionTime?: number;
   onSelectTask?: (taskId: string | null) => void;
   onStartStopwatch?: () => void;
+  onCreateTask?: (name: string, targetTimeMs: number) => Promise<void>;
+  onUpdateTask?: (id: string, updates: Partial<Task>) => Promise<void>;
+  onDeleteTask?: (id: string) => Promise<void>;
 }
 
 export const CalendarProgress = ({ 
@@ -59,14 +66,22 @@ export const CalendarProgress = ({
   currentStopwatchTime = 0,
   isStopwatchRunning = false,
   currentTaskId = null,
+  taskSessionTime = 0,
   onSelectTask,
-  onStartStopwatch
+  onStartStopwatch,
+  onCreateTask,
+  onUpdateTask,
+  onDeleteTask
 }: CalendarProgressProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [goalHours, setGoalHours] = useState("1");
   const [goalMinutes, setGoalMinutes] = useState("0");
+  const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false);
+  const [newTaskName, setNewTaskName] = useState('');
+  const [targetHours, setTargetHours] = useState('');
+  const [targetMinutes, setTargetMinutes] = useState('');
   
   const { dailyGoalMs, weeklyGoalMs, updateDailyGoal } = useDailyGoal();
 
@@ -265,6 +280,25 @@ export const CalendarProgress = ({
     setGoalHours(hours.toString());
     setGoalMinutes(minutes.toString());
     setGoalDialogOpen(true);
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTaskName.trim() || !onCreateTask) return;
+    const hours = parseInt(targetHours) || 0;
+    const minutes = parseInt(targetMinutes) || 0;
+    const targetTimeMs = (hours * 3600 + minutes * 60) * 1000;
+    if (targetTimeMs === 0) return;
+    await onCreateTask(newTaskName, targetTimeMs);
+    setNewTaskName('');
+    setTargetHours('');
+    setTargetMinutes('');
+    setShowCreateTaskDialog(false);
+  };
+
+  const handleToggleComplete = async (task: Task) => {
+    if (onUpdateTask) {
+      await onUpdateTask(task.id, { is_completed: !task.is_completed });
+    }
   };
 
   // Generate calendar days
@@ -525,6 +559,222 @@ export const CalendarProgress = ({
             ? "Weekly goal achieved! Amazing work!" 
             : `${Math.round(weeklyProgress.percentage)}% of weekly goal`}
         </p>
+      </Card>
+
+      {/* Task Management Section */}
+      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-chart-1/20">
+              <Clock className="h-5 w-5 text-chart-1" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-foreground">Tasks</p>
+              <p className="text-sm text-muted-foreground">Track time on your tasks</p>
+            </div>
+          </div>
+          <Dialog open={showCreateTaskDialog} onOpenChange={setShowCreateTaskDialog}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Task
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Task</DialogTitle>
+                <DialogDescription>
+                  Set a task name and target time to track your progress
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="task-name">Task Name</Label>
+                  <Input
+                    id="task-name"
+                    placeholder="e.g., Study React"
+                    value={newTaskName}
+                    onChange={(e) => setNewTaskName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Target Time</Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        type="number"
+                        placeholder="Hours"
+                        min="0"
+                        value={targetHours}
+                        onChange={(e) => setTargetHours(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        type="number"
+                        placeholder="Minutes"
+                        min="0"
+                        max="59"
+                        value={targetMinutes}
+                        onChange={(e) => setTargetMinutes(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Button onClick={handleCreateTask} className="w-full">
+                  Create Task
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {tasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Clock className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="text-muted-foreground">
+              No tasks yet. Create your first task to start tracking!
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {tasks.map((task) => {
+              const isActiveTask = currentTaskId === task.id;
+              const currentTaskTime = isActiveTask ? taskSessionTime : 0;
+              const displayTime = task.total_time_spent_ms + currentTaskTime;
+              const progress = Math.min((displayTime / task.target_time_ms) * 100, 100);
+              const overtime = displayTime > task.target_time_ms;
+              
+              return (
+                <div 
+                  key={task.id} 
+                  className={cn(
+                    "p-4 rounded-xl border border-border/50 transition-all",
+                    task.is_completed && "opacity-60",
+                    isActiveTask && isStopwatchRunning && "ring-2 ring-primary bg-primary/5"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <button
+                        onClick={() => handleToggleComplete(task)}
+                        className="hover:opacity-70 transition-opacity flex-shrink-0"
+                      >
+                        {task.is_completed ? (
+                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </button>
+                      <span className={cn(
+                        "font-medium truncate",
+                        task.is_completed && "line-through text-muted-foreground"
+                      )}>
+                        {task.name}
+                      </span>
+                      {isActiveTask && isStopwatchRunning && (
+                        <Badge variant="default" className="bg-primary animate-pulse gap-1 flex-shrink-0">
+                          <Play className="h-3 w-3" />
+                          Running
+                        </Badge>
+                      )}
+                      {isActiveTask && !isStopwatchRunning && currentStopwatchTime > 0 && (
+                        <Badge variant="secondary" className="gap-1 flex-shrink-0">
+                          <Pause className="h-3 w-3" />
+                          Paused
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {!task.is_completed && (
+                        <Button
+                          variant={isActiveTask ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            if (isActiveTask && isStopwatchRunning) {
+                              onStartStopwatch?.();
+                            } else if (isActiveTask && !isStopwatchRunning) {
+                              onStartStopwatch?.();
+                            } else {
+                              onSelectTask?.(task.id);
+                              if (!isStopwatchRunning) {
+                                onStartStopwatch?.();
+                              }
+                            }
+                          }}
+                          className="gap-1 h-8"
+                        >
+                          {isActiveTask && isStopwatchRunning ? (
+                            <><Pause className="h-3 w-3" /> Pause</>
+                          ) : isActiveTask ? (
+                            <><Play className="h-3 w-3" /> Resume</>
+                          ) : currentTaskId ? (
+                            <><Play className="h-3 w-3" /> Switch</>
+                          ) : (
+                            <><Play className="h-3 w-3" /> Start</>
+                          )}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDeleteTask?.(task.id)}
+                        className="text-destructive h-8 w-8"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isActiveTask && isStopwatchRunning && (
+                    <div className="bg-primary/10 rounded-lg p-3 text-center mb-3">
+                      <p className="text-xs text-muted-foreground mb-1">Current Session</p>
+                      <p className="font-mono text-2xl font-bold text-primary">{formatTime(taskSessionTime)}</p>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Progress</span>
+                        <Badge 
+                          variant={overtime ? "destructive" : progress >= 100 ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {Math.round(progress)}%
+                        </Badge>
+                      </div>
+                      <span className="font-mono text-xs">
+                        {formatTime(displayTime)} / {formatTime(task.target_time_ms)}
+                      </span>
+                    </div>
+                    <Progress
+                      value={progress}
+                      className={cn("h-2", overtime && "bg-destructive/20")}
+                    />
+                    <div className="flex gap-2 flex-wrap">
+                      {overtime && (
+                        <Badge variant="destructive" className="text-xs">
+                          +{formatTime(displayTime - task.target_time_ms)} overtime
+                        </Badge>
+                      )}
+                      {!task.is_completed && progress < 100 && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
+                          {formatTime(task.target_time_ms - displayTime)} remaining
+                        </Badge>
+                      )}
+                      {task.is_completed && (
+                        <Badge variant="default" className="text-xs bg-primary">
+                          Completed
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       {/* Stats Cards */}
