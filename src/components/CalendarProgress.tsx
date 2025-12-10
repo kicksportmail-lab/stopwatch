@@ -50,6 +50,7 @@ interface CalendarProgressProps {
   isStopwatchRunning?: boolean;
   currentTaskId?: string | null;
   onSelectTask?: (taskId: string | null) => void;
+  onStartStopwatch?: () => void;
 }
 
 export const CalendarProgress = ({ 
@@ -58,7 +59,8 @@ export const CalendarProgress = ({
   currentStopwatchTime = 0,
   isStopwatchRunning = false,
   currentTaskId = null,
-  onSelectTask
+  onSelectTask,
+  onStartStopwatch
 }: CalendarProgressProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -392,7 +394,18 @@ export const CalendarProgress = ({
                       "space-y-1.5 p-2 -mx-2 rounded-lg transition-all cursor-pointer hover:bg-primary/10",
                       isActive && "bg-primary/15 ring-1 ring-primary/30"
                     )}
-                    onClick={() => item.taskId && onSelectTask?.(isActive ? null : item.taskId)}
+                    onClick={() => {
+                      if (item.taskId) {
+                        if (isActive) {
+                          onSelectTask?.(null);
+                        } else {
+                          onSelectTask?.(item.taskId);
+                          if (!isStopwatchRunning) {
+                            onStartStopwatch?.();
+                          }
+                        }
+                      }
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
