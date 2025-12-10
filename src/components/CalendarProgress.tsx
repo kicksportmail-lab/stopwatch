@@ -427,16 +427,18 @@ export const CalendarProgress = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (item.taskId) {
-                              if (!isActive) {
-                                onSelectTask?.(item.taskId);
-                              }
-                              if (isActive && isStopwatchRunning) {
-                                onStartStopwatch?.();
-                              } else if (!isStopwatchRunning) {
-                                if (!isActive) {
-                                  onSelectTask?.(item.taskId);
-                                }
+                            if (!item.taskId) return;
+                            
+                            if (isActive && isStopwatchRunning) {
+                              // Pause the stopwatch for this active task
+                              onStartStopwatch?.();
+                            } else if (isActive && !isStopwatchRunning) {
+                              // Resume the stopwatch for this active task
+                              onStartStopwatch?.();
+                            } else {
+                              // Switch to this task and start/continue stopwatch
+                              onSelectTask?.(item.taskId);
+                              if (!isStopwatchRunning) {
                                 onStartStopwatch?.();
                               }
                             }
