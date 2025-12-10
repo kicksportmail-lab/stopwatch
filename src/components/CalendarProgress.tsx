@@ -48,13 +48,17 @@ interface CalendarProgressProps {
   tasks?: Task[];
   currentStopwatchTime?: number;
   isStopwatchRunning?: boolean;
+  currentTaskId?: string | null;
+  onSelectTask?: (taskId: string | null) => void;
 }
 
 export const CalendarProgress = ({ 
   sessions, 
   tasks = [],
   currentStopwatchTime = 0,
-  isStopwatchRunning = false 
+  isStopwatchRunning = false,
+  currentTaskId = null,
+  onSelectTask
 }: CalendarProgressProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -379,14 +383,32 @@ export const CalendarProgress = ({
                 ];
                 const colorClass = item.taskId ? taskColors[index % taskColors.length] : "bg-muted-foreground";
                 
+                const isActive = item.taskId === currentTaskId;
+                
                 return (
-                  <div key={item.taskId || 'unassigned'} className="space-y-1.5">
+                  <div 
+                    key={item.taskId || 'unassigned'} 
+                    className={cn(
+                      "space-y-1.5 p-2 -mx-2 rounded-lg transition-all cursor-pointer hover:bg-primary/10",
+                      isActive && "bg-primary/15 ring-1 ring-primary/30"
+                    )}
+                    onClick={() => item.taskId && onSelectTask?.(isActive ? null : item.taskId)}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className={cn("w-2 h-2 rounded-full", colorClass)} />
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          colorClass,
+                          isActive && isStopwatchRunning && "animate-pulse"
+                        )} />
                         <span className="text-sm text-foreground truncate max-w-[120px]">
                           {item.taskName}
                         </span>
+                        {isActive && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">
+                            {isStopwatchRunning ? 'Active' : 'Selected'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={cn(
