@@ -64,7 +64,7 @@ const Index = () => {
               isStopwatchRunning={isStopwatchRunning}
               currentTaskId={currentTaskId}
               onSelectTask={setTask}
-              onStartStopwatch={() => !isStopwatchRunning && handleStartStop()}
+              onStartStopwatch={handleStartStop}
             />
           </TabsContent>
 
