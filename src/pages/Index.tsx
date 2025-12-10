@@ -12,7 +12,7 @@ import { useTasksSync } from "@/hooks/useTasksSync";
 
 const Index = () => {
   const { history, handleUpdateSessionName, handleDeleteSession, handleClearHistory } = useHistorySync();
-  const { time: currentStopwatchTime, isRunning: isStopwatchRunning } = useStopwatchSync();
+  const { time: currentStopwatchTime, isRunning: isStopwatchRunning, currentTaskId, setTask } = useStopwatchSync();
   const { tasks } = useTasksSync();
   return (
     <div className="min-h-screen bg-gradient-primary">
@@ -62,6 +62,8 @@ const Index = () => {
               tasks={tasks}
               currentStopwatchTime={currentStopwatchTime}
               isStopwatchRunning={isStopwatchRunning}
+              currentTaskId={currentTaskId}
+              onSelectTask={setTask}
             />
           </TabsContent>
 
