@@ -192,23 +192,25 @@ export const CalendarProgress = ({
 
   const todayProgress = Math.min((todayTime / dailyGoalMs) * 100, 100);
 
-  // Get task breakdown for today - use tasks' total_time_spent_ms (resets daily)
+  // Get task breakdown for today - show all tasks with their progress
   const todayTaskBreakdown = useMemo(() => {
-    const breakdown: { taskId: string | null; taskName: string; time: number }[] = [];
+    const breakdown: { taskId: string | null; taskName: string; time: number; targetTime: number }[] = [];
     
-    // Use tasks' current total_time_spent_ms (which resets at midnight)
+    // Show all tasks (including those with 0 time spent)
     tasks.forEach((task) => {
-      if (task.total_time_spent_ms > 0) {
-        breakdown.push({
-          taskId: task.id,
-          taskName: task.name,
-          time: task.total_time_spent_ms,
-        });
-      }
+      breakdown.push({
+        taskId: task.id,
+        taskName: task.name,
+        time: task.total_time_spent_ms,
+        targetTime: task.target_time_ms,
+      });
     });
 
-    // Sort by time descending
-    return breakdown.sort((a, b) => b.time - a.time);
+    // Sort by time descending (tasks with time first, then by name)
+    return breakdown.sort((a, b) => {
+      if (a.time !== b.time) return b.time - a.time;
+      return a.taskName.localeCompare(b.taskName);
+    });
   }, [tasks]);
 
   // Weekly progress - cumulative from start of current week (includes current stopwatch time)
@@ -361,10 +363,11 @@ export const CalendarProgress = ({
         {/* Task Breakdown */}
         {todayTaskBreakdown.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border/50">
-            <p className="text-xs text-muted-foreground mb-3">Tasks contributing today</p>
+            <p className="text-xs text-muted-foreground mb-3">Task Progress Today</p>
             <div className="space-y-3">
               {todayTaskBreakdown.map((item, index) => {
-                const percentage = dailyGoalMs > 0 ? Math.min(Math.round((item.time / dailyGoalMs) * 100), 100) : 0;
+                const goalPercentage = dailyGoalMs > 0 ? Math.min(Math.round((item.time / dailyGoalMs) * 100), 100) : 0;
+                const taskPercentage = item.targetTime > 0 ? Math.min(Math.round((item.time / item.targetTime) * 100), 100) : 0;
                 const taskColors = [
                   "bg-primary",
                   "bg-accent",
@@ -386,18 +389,24 @@ export const CalendarProgress = ({
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-primary font-medium">
-                          {percentage}%
+                        <span className={cn(
+                          "text-xs font-medium",
+                          taskPercentage >= 100 ? "text-green-500" : "text-primary"
+                        )}>
+                          {taskPercentage}%
                         </span>
                         <span className="text-sm font-medium text-muted-foreground">
-                          {formatTime(item.time)}
+                          {formatTime(item.time)} / {formatTime(item.targetTime)}
                         </span>
                       </div>
                     </div>
                     <div className="h-1.5 bg-muted/50 rounded-full overflow-hidden">
                       <div 
-                        className={cn("h-full rounded-full transition-all duration-500", colorClass)}
-                        style={{ width: `${percentage}%` }}
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          taskPercentage >= 100 ? "bg-green-500" : colorClass
+                        )}
+                        style={{ width: `${taskPercentage}%` }}
                       />
                     </div>
                   </div>
