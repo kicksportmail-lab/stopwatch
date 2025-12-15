@@ -68,7 +68,7 @@ export const useStopwatchSync = () => {
         setStateId(stateData.id);
         accumulatedTimeRef.current = stateData.accumulated_time;
         setCurrentTaskId(stateData.task_id || null);
-        
+
         if (stateData.is_running && stateData.start_timestamp) {
           const elapsed = Date.now() - stateData.start_timestamp;
           setTime(stateData.accumulated_time + elapsed);
@@ -79,7 +79,7 @@ export const useStopwatchSync = () => {
           setTime(stateData.accumulated_time);
           setIsRunning(false);
         }
-        
+
         setLaps(Array.isArray(stateData.laps) ? (stateData.laps as unknown as LapTime[]) : []);
       }
     };
@@ -115,16 +115,16 @@ export const useStopwatchSync = () => {
   // Sync state to database with debouncing
   const syncState = async (state: Partial<StopwatchState>) => {
     if (!stateId) return;
-    
+
     const now = Date.now();
     // Prevent rapid-fire updates (debounce)
     if (now - lastUpdateTime.current < 50) return;
-    
+
     isUpdatingRef.current = true;
     lastUpdateTime.current = now;
 
     const updateData: any = {};
-    
+
     if (state.startTimestamp !== undefined) {
       updateData.start_timestamp = state.startTimestamp;
     }
@@ -168,16 +168,16 @@ export const useStopwatchSync = () => {
         (payload) => {
           // Ignore updates we just made
           if (isUpdatingRef.current) return;
-          
+
           const now = Date.now();
           // Ignore if we just updated
           if (now - lastUpdateTime.current < 100) return;
 
           const data = payload.new as any;
-          
+
           accumulatedTimeRef.current = data.accumulated_time;
           setCurrentTaskId(data.task_id || null);
-          
+
           if (data.is_running && data.start_timestamp) {
             // Only update if not already running or if timestamp changed
             if (!isRunningRef.current || startTimeRef.current !== data.start_timestamp) {
@@ -195,7 +195,7 @@ export const useStopwatchSync = () => {
               startTimeRef.current = null;
             }
           }
-          
+
           setLaps(Array.isArray(data.laps) ? (data.laps as unknown as LapTime[]) : []);
         }
       )
@@ -212,7 +212,7 @@ export const useStopwatchSync = () => {
       startTimeRef.current = timestamp;
       accumulatedTimeRef.current = time;
       setIsRunning(true);
-      
+
       await syncState({
         startTimestamp: timestamp,
         accumulatedTime: time,
@@ -224,11 +224,10 @@ export const useStopwatchSync = () => {
       startTimeRef.current = null;
       setIsRunning(false);
       setTime(currentTime);
-      
+
       await syncState({
         startTimestamp: null,
         accumulatedTime: currentTime,
-        isRunning: false
       });
     }
   };
@@ -243,7 +242,7 @@ export const useStopwatchSync = () => {
           .select('total_time_spent_ms')
           .eq('id', currentTaskId)
           .single();
-        
+
         if (task) {
           await supabase
             .from('tasks')
@@ -251,7 +250,7 @@ export const useStopwatchSync = () => {
             .eq('id', currentTaskId);
         }
       }
-      
+
       // Save to history
       await supabase
         .from('stopwatch_sessions')
@@ -285,15 +284,15 @@ export const useStopwatchSync = () => {
       const previousLapTime = laps.length > 0 ? laps[laps.length - 1].time : 0;
       const split = time - previousLapTime;
       const newLaps = [...laps, { id: laps.length + 1, time, split }];
-      
+
       setLaps(newLaps);
       await syncState({ laps: newLaps });
     }
   };
 
   const setTask = async (taskId: string | null) => {
-    // Save time to current task before switching to a DIFFERENT task
-    if (currentTaskId && taskId && currentTaskId !== taskId) {
+    // Save time to current task before switching
+    if (currentTaskId) {
       const timeSpent = time - taskStartTimeRef.current;
       if (timeSpent > 0) {
         const { data: task } = await supabase
@@ -301,24 +300,31 @@ export const useStopwatchSync = () => {
           .select('total_time_spent_ms')
           .eq('id', currentTaskId)
           .single();
-        
+
         if (task) {
           await supabase
             .from('tasks')
             .update({ total_time_spent_ms: task.total_time_spent_ms + timeSpent })
             .eq('id', currentTaskId);
-          
+
           // Dispatch event for optimistic UI update
-          window.dispatchEvent(new CustomEvent('task-time-updated', { 
-            detail: { taskId: currentTaskId, newTime: task.total_time_spent_ms + timeSpent } 
+          window.dispatchEvent(new CustomEvent('task-time-updated', {
+            detail: { taskId: currentTaskId, newTime: task.total_time_spent_ms + timeSpent }
           }));
         }
       }
-      
-      // Update task start time reference for new task (don't reset stopwatch)
+    }
+
+    // Always update task start time reference when switching TO a task
+    // This ensures the new task session starts at 0 relative to the current stopwatch time
+    if (taskId) {
+      taskStartTimeRef.current = time;
+    } else {
+      // If switching to NO task, we don't really need to track session time, 
+      // but let's reset it just in case
       taskStartTimeRef.current = time;
     }
-    
+
     // Just update task reference, keep stopwatch running
     await syncState({ taskId });
     setCurrentTaskId(taskId);

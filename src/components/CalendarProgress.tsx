@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, Settings2, CalendarDays, Play, Pause, Plus, Trash2, CheckCircle2, Circle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, CalendarDays, Play, Pause, Plus, Trash2, CheckCircle2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -30,6 +30,98 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDailyGoal } from "@/hooks/useDailyGoal";
 import { Task } from "@/hooks/useTasksSync";
+import { useTodos } from "@/hooks/useTodos";
+import { ListTodo } from "lucide-react";
+import { AnalogClock } from "./AnalogClock";
+
+interface TodoListProps {
+  selectedDate: Date | null;
+}
+
+const TodoList = ({ selectedDate }: TodoListProps) => {
+  const { todos, isLoading, addTodo, toggleTodo, deleteTodo } = useTodos(selectedDate);
+  const [newTodo, setNewTodo] = useState("");
+
+  const handleAdd = async () => {
+    if (newTodo.trim()) {
+      await addTodo(newTodo);
+      setNewTodo("");
+    }
+  };
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 rounded-xl bg-primary/10">
+          <ListTodo className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <p className="text-lg font-bold text-foreground">To-Do List</p>
+          <p className="text-sm text-muted-foreground">
+            {selectedDate ? format(selectedDate, "MMM d, yyyy") : "Today"}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        <Input
+          placeholder="Add a new task..."
+          value={newTodo}
+          onChange={(e) => setNewTodo(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+        />
+        <Button onClick={handleAdd} size="icon">
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {isLoading ? (
+          <p className="text-center text-muted-foreground py-4">Loading...</p>
+        ) : todos.length === 0 ? (
+          <p className="text-center text-muted-foreground py-4">No to-dos for this day</p>
+        ) : (
+          todos.map((todo) => (
+            <div
+              key={todo.id}
+              className={cn(
+                "flex items-center gap-3 p-3 rounded-lg border border-border/50 transition-all",
+                todo.is_completed && "bg-secondary/30 opacity-60"
+              )}
+            >
+              <button
+                onClick={() => toggleTodo(todo.id, !todo.is_completed)}
+                className="flex-shrink-0"
+              >
+                {todo.is_completed ? (
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground" />
+                )}
+              </button>
+              <span
+                className={cn(
+                  "flex-1 font-medium",
+                  todo.is_completed && "line-through text-muted-foreground"
+                )}
+              >
+                {todo.title}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => deleteTodo(todo.id)}
+                className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+    </Card>
+  );
+};
 
 interface LapTime {
   id: number;
@@ -60,8 +152,8 @@ interface CalendarProgressProps {
   onDeleteTask?: (id: string) => Promise<void>;
 }
 
-export const CalendarProgress = ({ 
-  sessions, 
+export const CalendarProgress = ({
+  sessions,
   tasks = [],
   currentStopwatchTime = 0,
   isStopwatchRunning = false,
@@ -75,15 +167,16 @@ export const CalendarProgress = ({
 }: CalendarProgressProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
-  const [goalHours, setGoalHours] = useState("1");
-  const [goalMinutes, setGoalMinutes] = useState("0");
+  const { weeklyGoalMs } = useDailyGoal();
   const [showCreateTaskDialog, setShowCreateTaskDialog] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
   const [targetHours, setTargetHours] = useState('');
   const [targetMinutes, setTargetMinutes] = useState('');
-  
-  const { dailyGoalMs, weeklyGoalMs, updateDailyGoal } = useDailyGoal();
+
+  // Calculate daily goal automatically from tasks
+  const dailyGoalMs = useMemo(() => {
+    return tasks.reduce((acc, task) => acc + task.target_time_ms, 0);
+  }, [tasks]);
 
   // Aggregate time by day
   const timeByDay = useMemo(() => {
@@ -110,9 +203,12 @@ export const CalendarProgress = ({
 
   // Calculate streak (only counts days where goal was met)
   const currentStreak = useMemo(() => {
+    // If no daily goal set, streak is 0
+    if (dailyGoalMs === 0) return 0;
+
     let streak = 0;
     let checkDate = new Date();
-    
+
     while (true) {
       const dayKey = format(checkDate, "yyyy-MM-dd");
       const dayTime = timeByDay.get(dayKey) || 0;
@@ -211,12 +307,12 @@ export const CalendarProgress = ({
     return tasksTime + currentStopwatchTime;
   }, [tasks, currentStopwatchTime]);
 
-  const todayProgress = Math.min((todayTime / dailyGoalMs) * 100, 100);
+  const todayProgress = dailyGoalMs > 0 ? Math.min((todayTime / dailyGoalMs) * 100, 100) : 0;
 
   // Get task breakdown for today - show all tasks with their progress
   const todayTaskBreakdown = useMemo(() => {
     const breakdown: { taskId: string | null; taskName: string; time: number; targetTime: number }[] = [];
-    
+
     // Show all tasks (including those with 0 time spent)
     tasks.forEach((task) => {
       breakdown.push({
@@ -241,16 +337,16 @@ export const CalendarProgress = ({
     const weekStart = startOfWeek(today);
     const weekEnd = endOfWeek(today);
     const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-    
+
     let totalWeekTime = 0;
     weekDays.forEach((day) => {
       const dayKey = format(day, "yyyy-MM-dd");
       totalWeekTime += timeByDay.get(dayKey) || 0;
     });
-    
+
     // Add current stopwatch time to week total
     totalWeekTime += currentStopwatchTime;
-    
+
     return {
       time: totalWeekTime,
       percentage: Math.min((totalWeekTime / weeklyGoalMs) * 100, 100),
@@ -264,23 +360,7 @@ export const CalendarProgress = ({
     };
   }, [timeByDay, weeklyGoalMs, currentStopwatchTime]);
 
-  const handleSaveGoal = () => {
-    const hours = parseInt(goalHours) || 0;
-    const minutes = parseInt(goalMinutes) || 0;
-    const newGoalMs = (hours * 3600000) + (minutes * 60000);
-    if (newGoalMs > 0) {
-      updateDailyGoal(newGoalMs);
-      setGoalDialogOpen(false);
-    }
-  };
 
-  const openGoalDialog = () => {
-    const hours = Math.floor(dailyGoalMs / 3600000);
-    const minutes = Math.floor((dailyGoalMs % 3600000) / 60000);
-    setGoalHours(hours.toString());
-    setGoalMinutes(minutes.toString());
-    setGoalDialogOpen(true);
-  };
 
   const handleCreateTask = async () => {
     if (!newTaskName.trim() || !onCreateTask) return;
@@ -288,6 +368,7 @@ export const CalendarProgress = ({
     const minutes = parseInt(targetMinutes) || 0;
     const targetTimeMs = (hours * 3600 + minutes * 60) * 1000;
     if (targetTimeMs === 0) return;
+
     await onCreateTask(newTaskName, targetTimeMs);
     setNewTaskName('');
     setTargetHours('');
@@ -320,249 +401,8 @@ export const CalendarProgress = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Today's Progress */}
-      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/20">
-              <Target className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Today's Goal</p>
-              <p className="text-lg font-bold text-foreground">
-                {formatTime(todayTime)} / {formatTime(dailyGoalMs)}
-              </p>
-            </div>
-          </div>
-          <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={openGoalDialog}>
-                <Settings2 className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Set Daily Goal</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="hours">Hours</Label>
-                    <Input
-                      id="hours"
-                      type="number"
-                      min="0"
-                      max="24"
-                      value={goalHours}
-                      onChange={(e) => setGoalHours(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="minutes">Minutes</Label>
-                    <Input
-                      id="minutes"
-                      type="number"
-                      min="0"
-                      max="59"
-                      value={goalMinutes}
-                      onChange={(e) => setGoalMinutes(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <Button onClick={handleSaveGoal} className="w-full">
-                  Save Goal
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-        
-        {/* Progress bar */}
-        <div className="relative">
-          <div className="h-3 bg-secondary rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                todayProgress >= 100 ? "bg-green-500" : "bg-primary"
-              )}
-              style={{ width: `${todayProgress}%` }}
-            />
-          </div>
-          {todayProgress >= 100 && (
-            <div className="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5">
-              <Check className="h-3 w-3 text-white" />
-            </div>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          {todayProgress >= 100 
-            ? "Goal achieved! Great job!" 
-            : `${Math.round(todayProgress)}% complete`}
-        </p>
-
-        {/* Task Breakdown */}
-        {todayTaskBreakdown.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-border/50">
-            <p className="text-xs text-muted-foreground mb-3">Task Progress Today</p>
-            <div className="space-y-3">
-              {todayTaskBreakdown.map((item, index) => {
-                const goalPercentage = dailyGoalMs > 0 ? Math.min(Math.round((item.time / dailyGoalMs) * 100), 100) : 0;
-                const taskPercentage = item.targetTime > 0 ? Math.min(Math.round((item.time / item.targetTime) * 100), 100) : 0;
-                const taskColors = [
-                  "bg-primary",
-                  "bg-accent",
-                  "bg-chart-1",
-                  "bg-chart-2",
-                  "bg-chart-3",
-                  "bg-chart-4",
-                  "bg-chart-5",
-                ];
-                const colorClass = item.taskId ? taskColors[index % taskColors.length] : "bg-muted-foreground";
-                
-                const isActive = item.taskId === currentTaskId;
-                
-                return (
-                  <div 
-                    key={item.taskId || 'unassigned'} 
-                    className={cn(
-                      "space-y-1.5 p-2 -mx-2 rounded-lg transition-all cursor-pointer hover:bg-primary/10",
-                      isActive && "bg-primary/15 ring-1 ring-primary/30"
-                    )}
-                    onClick={() => {
-                      if (item.taskId) {
-                        if (isActive) {
-                          onSelectTask?.(null);
-                        } else {
-                          onSelectTask?.(item.taskId);
-                          if (!isStopwatchRunning) {
-                            onStartStopwatch?.();
-                          }
-                        }
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "w-2 h-2 rounded-full",
-                          colorClass,
-                          isActive && isStopwatchRunning && "animate-pulse"
-                        )} />
-                        <span className="text-sm text-foreground truncate max-w-[120px]">
-                          {item.taskName}
-                        </span>
-                        {isActive && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">
-                            {isStopwatchRunning ? 'Active' : 'Selected'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!item.taskId) return;
-                            
-                            if (isActive && isStopwatchRunning) {
-                              // Pause the stopwatch for this active task
-                              onStartStopwatch?.();
-                            } else if (isActive && !isStopwatchRunning) {
-                              // Resume the stopwatch for this active task
-                              onStartStopwatch?.();
-                            } else {
-                              // Switch to this task and start/continue stopwatch
-                              onSelectTask?.(item.taskId);
-                              if (!isStopwatchRunning) {
-                                onStartStopwatch?.();
-                              }
-                            }
-                          }}
-                          className={cn(
-                            "p-1 rounded-full transition-all",
-                            isActive && isStopwatchRunning 
-                              ? "bg-primary/20 text-primary hover:bg-primary/30" 
-                              : "bg-muted hover:bg-primary/20 text-muted-foreground hover:text-primary"
-                          )}
-                        >
-                          {isActive && isStopwatchRunning ? (
-                            <Pause className="w-3.5 h-3.5" />
-                          ) : (
-                            <Play className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                        <span className={cn(
-                          "text-xs font-medium",
-                          taskPercentage >= 100 ? "text-green-500" : "text-primary"
-                        )}>
-                          {taskPercentage}%
-                        </span>
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {formatTime(item.time)} / {formatTime(item.targetTime)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-1.5 bg-muted/50 rounded-full overflow-hidden">
-                      <div 
-                        className={cn(
-                          "h-full rounded-full transition-all duration-500",
-                          taskPercentage >= 100 ? "bg-green-500" : colorClass
-                        )}
-                        style={{ width: `${taskPercentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Weekly Progress Card */}
-      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-accent/20">
-              <CalendarDays className="h-5 w-5 text-accent-foreground" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">This Week</p>
-              <p className="text-lg font-bold text-foreground">
-                {formatTime(weeklyProgress.time)} / {formatTime(weeklyGoalMs)}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">{weeklyProgress.daysTracked}/7 days tracked</p>
-          </div>
-        </div>
-        
-        {/* Weekly progress bar */}
-        <div className="relative">
-          <div className="h-3 bg-secondary rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                weeklyProgress.percentage >= 100 ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-primary to-primary/70"
-              )}
-              style={{ width: `${weeklyProgress.percentage}%` }}
-            />
-          </div>
-          {weeklyProgress.percentage >= 100 && (
-            <div className="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5">
-              <Check className="h-3 w-3 text-white" />
-            </div>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          {weeklyProgress.percentage >= 100 
-            ? "Weekly goal achieved! Amazing work!" 
-            : `${Math.round(weeklyProgress.percentage)}% of weekly goal`}
-        </p>
-      </Card>
-
       {/* Task Management Section */}
-      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-chart-1/20">
@@ -644,10 +484,10 @@ export const CalendarProgress = ({
               const displayTime = task.total_time_spent_ms + currentTaskTime;
               const progress = Math.min((displayTime / task.target_time_ms) * 100, 100);
               const overtime = displayTime > task.target_time_ms;
-              
+
               return (
-                <div 
-                  key={task.id} 
+                <div
+                  key={task.id}
                   className={cn(
                     "p-4 rounded-xl border border-border/50 transition-all",
                     task.is_completed && "opacity-60",
@@ -727,17 +567,25 @@ export const CalendarProgress = ({
                   </div>
 
                   {isActiveTask && isStopwatchRunning && (
-                    <div className="bg-primary/10 rounded-lg p-3 text-center mb-3">
-                      <p className="text-xs text-muted-foreground mb-1">Current Session</p>
-                      <p className="font-mono text-2xl font-bold text-primary">{formatTime(taskSessionTime)}</p>
+                    <div className="bg-primary/10 rounded-lg p-3 text-center mb-3 flex flex-col items-center gap-2">
+                      <AnalogClock
+                        time={taskSessionTime}
+                        isRunning={true}
+                        size={120}
+                        showDigital={false}
+                      />
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Current Session</p>
+                        <p className="font-mono text-2xl font-bold text-primary">{formatTime(taskSessionTime)}</p>
+                      </div>
                     </div>
                   )}
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">Progress</span>
-                        <Badge 
+                        <Badge
                           variant={overtime ? "destructive" : progress >= 100 ? "default" : "secondary"}
                           className="text-xs"
                         >
@@ -777,9 +625,95 @@ export const CalendarProgress = ({
         )}
       </Card>
 
+      {/* To-Do List Section */}
+      <TodoList selectedDate={selectedDate} />
+
+      {/* Today's Progress */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/20">
+              <Target className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Today's Goal</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatTime(todayTime)} / {formatTime(dailyGoalMs)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="relative">
+          <div className="h-3 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                todayProgress >= 100 ? "bg-green-500" : "bg-primary"
+              )}
+              style={{ width: `${todayProgress}%` }}
+            />
+          </div>
+          {todayProgress >= 100 && (
+            <div className="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5">
+              <Check className="h-3 w-3 text-white" />
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          {todayProgress >= 100
+            ? "Goal achieved! Great job!"
+            : `${Math.round(todayProgress)}% complete`}
+        </p>
+      </Card>
+
+      {/* Weekly Progress Card */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-accent/20">
+              <CalendarDays className="h-5 w-5 text-accent-foreground" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">This Week</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatTime(weeklyProgress.time)} / {formatTime(weeklyGoalMs)}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">{weeklyProgress.daysTracked}/7 days tracked</p>
+          </div>
+        </div>
+
+        {/* Weekly progress bar */}
+        <div className="relative">
+          <div className="h-3 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                weeklyProgress.percentage >= 100 ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-primary to-primary/70"
+              )}
+              style={{ width: `${weeklyProgress.percentage}%` }}
+            />
+          </div>
+          {weeklyProgress.percentage >= 100 && (
+            <div className="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5">
+              <Check className="h-3 w-3 text-white" />
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          {weeklyProgress.percentage >= 100
+            ? "Weekly goal achieved! Amazing work!"
+            : `${Math.round(weeklyProgress.percentage)}% of weekly goal`}
+        </p>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
+        <Card className="p-4">
           <div className="flex flex-col items-center text-center">
             <div className="p-2 rounded-xl bg-primary/20 mb-2">
               <Flame className="h-5 w-5 text-primary" />
@@ -789,7 +723,7 @@ export const CalendarProgress = ({
           </div>
         </Card>
 
-        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
+        <Card className="p-4">
           <div className="flex flex-col items-center text-center">
             <div className="p-2 rounded-xl bg-green-500/20 mb-2">
               <Check className="h-5 w-5 text-green-500" />
@@ -799,7 +733,7 @@ export const CalendarProgress = ({
           </div>
         </Card>
 
-        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
+        <Card className="p-4">
           <div className="flex flex-col items-center text-center">
             <div className="p-2 rounded-xl bg-accent/20 mb-2">
               <Clock className="h-5 w-5 text-accent-foreground" />
@@ -811,7 +745,7 @@ export const CalendarProgress = ({
       </div>
 
       {/* Calendar */}
-      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
+      <Card className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-foreground">
@@ -914,7 +848,7 @@ export const CalendarProgress = ({
 
       {/* Selected Day Details */}
       {selectedDate && (
-        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6 animate-scale-in">
+        <Card className="p-6 animate-scale-in">
           <h3 className="text-lg font-semibold text-foreground mb-4">
             {format(selectedDate, "EEEE, MMMM d, yyyy")}
           </h3>

@@ -44,7 +44,7 @@ export const useTasksSync = () => {
     // Calculate total time and save to history if there was any time tracked
     if (stopwatchState) {
       let totalTime = stopwatchState.accumulated_time || 0;
-      
+
       // If it was running, add elapsed time since start
       if (stopwatchState.is_running && stopwatchState.start_timestamp) {
         totalTime += Date.now() - stopwatchState.start_timestamp;
@@ -131,7 +131,7 @@ export const useTasksSync = () => {
     // Show toast notification for daily reset
     toast({
       title: "New Day Started",
-      description: dataSaved 
+      description: dataSaved
         ? "Yesterday's progress was saved to history. Tasks and stopwatch have been reset."
         : "Tasks and stopwatch have been reset for today.",
     });
@@ -140,6 +140,26 @@ export const useTasksSync = () => {
     localStorage.setItem(TASK_RESET_KEY, todayKey);
     return loadedTasks;
   }, [resetStopwatchForNewDay]);
+
+  // Periodic check for new day (every minute)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const todayKey = format(new Date(), 'yyyy-MM-dd');
+      const lastResetDate = localStorage.getItem(TASK_RESET_KEY);
+
+      if (lastResetDate !== todayKey) {
+        // Date has changed, trigger reset
+        // We need to fetch current tasks to reset them properly
+        const { data } = await supabase.from('tasks').select('*');
+        if (data) {
+          const resetTasks = await checkAndResetTasks(data);
+          setTasks(resetTasks);
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [checkAndResetTasks]);
 
   // Load initial tasks
   useEffect(() => {
