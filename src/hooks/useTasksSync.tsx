@@ -249,15 +249,42 @@ export const useTasksSync = () => {
   }, []);
 
   const createTask = async (name: string, targetTimeMs: number) => {
-    const { error } = await supabase.from('tasks').insert({
+    // Optimistic update - add task immediately to UI
+    const optimisticTask: Task = {
+      id: `temp-${Date.now()}`,
       name,
       target_time_ms: targetTimeMs,
       total_time_spent_ms: 0,
       is_completed: false,
-    });
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
-    if (error) {
-      console.error('Error creating task:', error);
+    setTasks((current) => [optimisticTask, ...current]);
+
+    try {
+      const { data, error } = await supabase.from('tasks').insert({
+        name,
+        target_time_ms: targetTimeMs,
+        total_time_spent_ms: 0,
+        is_completed: false,
+      }).select().single();
+
+      if (error) {
+        // Remove optimistic update on error
+        setTasks((current) => current.filter(t => t.id !== optimisticTask.id));
+        throw error;
+      }
+
+      // Replace optimistic task with real one from database
+      if (data) {
+        setTasks((current) => 
+          current.map(t => t.id === optimisticTask.id ? data as Task : t)
+        );
+      }
+    } catch (error) {
+      // Remove optimistic update on error
+      setTasks((current) => current.filter(t => t.id !== optimisticTask.id));
       throw error;
     }
   };

@@ -118,14 +118,11 @@ const Index = () => {
             />
           </TabsContent>
 
+
           <TabsContent value="history" className="mt-6">
-            <History
-              sessions={history}
-              onClearHistory={handleClearHistory}
-              onUpdateSessionName={handleUpdateSessionName}
-              onDeleteSession={handleDeleteSession}
-            />
+            <History sessions={history} />
           </TabsContent>
+
 
           <TabsContent value="steps" className="mt-6">
             <StepTracker />

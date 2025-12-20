@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: 8080,
   },
   plugins: [
@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        globPatterns: mode === "development" ? [] : ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         navigateFallback: "/",
         navigateFallbackDenylist: [/^\/api/],
         importScripts: ['/sw-custom.js'],

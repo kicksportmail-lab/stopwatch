@@ -1,14 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, Download, Filter, X, Edit2, Check } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Calendar, Download, BarChart3, Clock, Activity, TrendingUp, Check, ArrowDown } from "lucide-react";
 import { useState } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { format, isSameDay } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 interface LapTime {
   id: number;
@@ -22,87 +18,15 @@ interface HistorySession {
   laps: LapTime[];
   date: string;
   name?: string;
+  task_id?: string | null;
 }
 
 export const History = ({
   sessions,
-  onClearHistory,
-  onUpdateSessionName,
-  onDeleteSession,
 }: {
   sessions: HistorySession[];
-  onClearHistory: () => void;
-  onUpdateSessionName: (sessionId: string, name: string) => void;
-  onDeleteSession: (sessionId: string) => void;
 }) => {
-  const [dateFrom, setDateFrom] = useState<Date>();
-  const [dateTo, setDateTo] = useState<Date>();
-  const [minDuration, setMinDuration] = useState<string>("");
-  const [maxDuration, setMaxDuration] = useState<string>("");
-  const [minLaps, setMinLaps] = useState<string>("");
-  const [maxLaps, setMaxLaps] = useState<string>("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState("");
-
-  const parseTimeInput = (timeStr: string): number => {
-    if (!timeStr) return 0;
-    const parts = timeStr.split(':');
-    if (parts.length === 3) {
-      const [h, m, s] = parts.map(Number);
-      return (h * 3600 + m * 60 + s) * 1000;
-    }
-    return 0;
-  };
-
-  const handleEditSession = (sessionId: string, currentName?: string) => {
-    setEditingSessionId(sessionId);
-    setEditingName(currentName || "");
-  };
-
-  const handleSaveName = (sessionId: string) => {
-    onUpdateSessionName(sessionId, editingName);
-    setEditingSessionId(null);
-    setEditingName("");
-  };
-
-  const handleCancelEdit = () => {
-    setEditingSessionId(null);
-    setEditingName("");
-  };
-
-  const filteredSessions = sessions.filter(session => {
-    const sessionDate = new Date(session.date);
-    
-    // Date range filter
-    if (dateFrom && sessionDate < dateFrom) return false;
-    if (dateTo && sessionDate > dateTo) return false;
-    
-    // Duration filter
-    const minDur = parseTimeInput(minDuration);
-    const maxDur = parseTimeInput(maxDuration);
-    if (minDur > 0 && session.time < minDur) return false;
-    if (maxDur > 0 && session.time > maxDur) return false;
-    
-    // Lap count filter
-    const minL = minLaps ? parseInt(minLaps) : 0;
-    const maxL = maxLaps ? parseInt(maxLaps) : Infinity;
-    if (minL > 0 && session.laps.length < minL) return false;
-    if (maxL < Infinity && session.laps.length > maxL) return false;
-    
-    return true;
-  });
-
-  const clearFilters = () => {
-    setDateFrom(undefined);
-    setDateTo(undefined);
-    setMinDuration("");
-    setMaxDuration("");
-    setMinLaps("");
-    setMaxLaps("");
-  };
-
-  const hasActiveFilters = dateFrom || dateTo || minDuration || maxDuration || minLaps || maxLaps;
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / 3600000);
@@ -114,31 +38,36 @@ export const History = ({
       .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date);
+  const formatTimeShort = (ms: number) => {
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.floor((ms % 3600000) / 60000);
+    if (hours > 0) {
+      return `${hours}h`;
+    }
+    return `${minutes}m`;
   };
 
-
+  // Calculate time by day for analytics
+  const timeByDay = new Map<string, number>();
+  sessions.forEach((session) => {
+    const dayKey = format(new Date(session.date), "yyyy-MM-dd");
+    timeByDay.set(dayKey, (timeByDay.get(dayKey) || 0) + session.time);
+  });
 
   const exportToCSV = () => {
-    const headers = ["Date", "Time", "Laps Count"];
+    const headers = ["Date", "Time", "Name", "Laps Count"];
     const rows = sessions.map(session => [
-      formatDate(session.date),
+      format(new Date(session.date), "MMM d, yyyy h:mm a"),
       formatTime(session.time),
+      session.name || "Untitled Session",
       session.laps.length
     ]);
-    
+
     const csvContent = [
       headers.join(","),
       ...rows.map(row => row.join(","))
     ].join("\n");
-    
+
     const dataBlob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
@@ -147,7 +76,6 @@ export const History = ({
     link.click();
     URL.revokeObjectURL(url);
   };
-
 
   if (sessions.length === 0) {
     return (
@@ -160,287 +88,183 @@ export const History = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Filter Section */}
-      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-4">
-        <div className="flex justify-between items-center">
+      {/* History & Analytics Section */}
+      <Card className="p-4 sm:p-6 bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-accent/20 to-primary/20 shadow-md">
+              <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />
+            </div>
+            <div>
+              <p className="text-lg sm:text-xl font-bold text-foreground bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
+                History & Analytics
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">View your activity history and insights</p>
+            </div>
+          </div>
           <Button
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={exportToCSV}
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 text-xs sm:text-sm"
           >
-            <Filter className="h-4 w-4" />
-            {showFilters ? "Hide Filters" : "Show Filters"}
-            {hasActiveFilters && (
-              <span className="ml-1 bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                !
-              </span>
-            )}
+            <Download className="h-4 w-4" />
+            Export CSV
           </Button>
-          {hasActiveFilters && (
-            <Button
-              onClick={clearFilters}
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-              Clear Filters
-            </Button>
-          )}
         </div>
 
-        {showFilters && (
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Date Range Filters */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Date From</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateFrom && "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {dateFrom ? format(dateFrom, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+        {/* Analytics Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+          <div className="p-2 sm:p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Total Sessions</span>
             </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Date To</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateTo && "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Duration Filters */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Min Duration (HH:MM:SS)</Label>
-              <Input
-                placeholder="00:00:00"
-                value={minDuration}
-                onChange={(e) => setMinDuration(e.target.value)}
-                className="font-mono"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Max Duration (HH:MM:SS)</Label>
-              <Input
-                placeholder="00:00:00"
-                value={maxDuration}
-                onChange={(e) => setMaxDuration(e.target.value)}
-                className="font-mono"
-              />
-            </div>
-
-            {/* Lap Count Filters */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Min Laps</Label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={minLaps}
-                onChange={(e) => setMinLaps(e.target.value)}
-                min="0"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Max Laps</Label>
-              <Input
-                type="number"
-                placeholder="Any"
-                value={maxLaps}
-                onChange={(e) => setMaxLaps(e.target.value)}
-                min="0"
-              />
-            </div>
+            <p className="text-base sm:text-lg font-bold text-foreground">{sessions.length}</p>
           </div>
-        )}
+          <div className="p-2 sm:p-3 rounded-lg bg-accent/10 border border-accent/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-accent" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Total Time</span>
+            </div>
+            <p className="text-base sm:text-lg font-bold text-foreground">
+              {formatTimeShort(sessions.reduce((acc, s) => acc + s.time, 0))}
+            </p>
+          </div>
+          <div className="p-2 sm:p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Avg/Session</span>
+            </div>
+            <p className="text-base sm:text-lg font-bold text-foreground">
+              {sessions.length > 0 ? formatTimeShort(Math.round(sessions.reduce((acc, s) => acc + s.time, 0) / sessions.length)) : '0m'}
+            </p>
+          </div>
+          <div className="p-2 sm:p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Best Day</span>
+            </div>
+            <p className="text-base sm:text-lg font-bold text-foreground">
+              {formatTimeShort(Math.max(...Array.from(timeByDay.values()), 0))}
+            </p>
+          </div>
+        </div>
+
+        {/* Recent Sessions List */}
+        <div className="mb-0">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              All Sessions ({sessions.length})
+            </h3>
+          </div>
+          <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+            {sessions.map((session) => {
+              const sessionDate = new Date(session.date);
+              const isSelectedSession = selectedDate && isSameDay(sessionDate, selectedDate);
+              return (
+                <div
+                  key={session.id}
+                  onClick={() => setSelectedDate(isSelectedSession ? null : sessionDate)}
+                  className={cn(
+                    "flex items-center gap-3 p-2 sm:p-3 rounded-lg border cursor-pointer transition-all touch-manipulation active:scale-95 group",
+                    isSelectedSession
+                      ? "bg-primary/10 border-primary/50 ring-2 ring-primary shadow-md"
+                      : "bg-secondary/30 border-border/30 hover:bg-secondary/50 hover:border-primary/30"
+                  )}
+                >
+                  <div className={cn(
+                    "flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all",
+                    isSelectedSession ? "bg-primary/30" : "bg-primary/20 group-hover:bg-primary/30"
+                  )}>
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-foreground truncate">
+                      {session.name || 'Untitled Session'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
+                        {format(sessionDate, "MMM d, yyyy")}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground/50">•</span>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
+                        {format(sessionDate, "h:mm a")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className="font-mono text-xs sm:text-sm font-semibold text-foreground">
+                      {formatTime(session.time)}
+                    </span>
+                    {session.laps && session.laps.length > 0 && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {session.laps.length} lap{session.laps.length !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </Card>
 
-      {filteredSessions.length === 0 && sessions.length > 0 && (
-        <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-8 text-center">
-          <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">No sessions match your filters. Try adjusting them.</p>
+      {/* Selected Session Details */}
+      {selectedDate && sessions.filter(s => isSameDay(new Date(s.date), selectedDate)).length > 0 && (
+        <Card className="p-4 sm:p-6 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20 shadow-lg">
+          <div className="flex items-center gap-2 mb-4">
+            <ArrowDown className="h-4 w-4 text-primary" />
+            <h3 className="text-base sm:text-lg font-bold text-foreground">
+              Sessions on {format(selectedDate, "MMMM d, yyyy")}
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {sessions
+              .filter(s => isSameDay(new Date(s.date), selectedDate))
+              .map((session) => (
+                <Card key={session.id} className="p-3 sm:p-4 bg-card border-border/50">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="text-sm sm:text-base font-semibold text-foreground">
+                        {session.name || 'Untitled Session'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(session.date), "h:mm a")}
+                      </p>
+                    </div>
+                    <p className="text-lg sm:text-xl font-bold font-mono text-primary">
+                      {formatTime(session.time)}
+                    </p>
+                  </div>
+                  {session.laps && session.laps.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border/30">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">
+                        Laps ({session.laps.length})
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {session.laps.map((lap, index) => (
+                          <div
+                            key={lap.id}
+                            className="flex justify-between text-xs sm:text-sm"
+                          >
+                            <span className="text-muted-foreground">
+                              Lap {index + 1}
+                            </span>
+                            <span className="font-mono text-foreground">
+                              {formatTime(lap.time)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              ))}
+          </div>
         </Card>
       )}
-
-      {/* History List */}
-      <Card className="bg-gradient-card backdrop-blur-lg border-border/50 shadow-[var(--shadow-card)] p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-foreground">History</h2>
-          <div className="flex gap-2">
-            <Button
-              onClick={exportToCSV}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              CSV
-            </Button>
-            <Button
-              onClick={onClearHistory}
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear
-            </Button>
-          </div>
-        </div>
-
-        <ScrollArea className="h-[500px] pr-4">
-          <div className="space-y-4">
-            {filteredSessions.map((session) => (
-            <Card
-              key={session.id}
-              className="bg-secondary/30 border-border/30 p-4 hover:bg-secondary/50 transition-colors"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  {editingSessionId === session.id ? (
-                    <div className="flex items-center gap-2 mb-2">
-                      <Input
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        placeholder="Session name"
-                        className="h-8 text-sm"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleSaveName(session.id);
-                          } else if (e.key === "Escape") {
-                            handleCancelEdit();
-                          }
-                        }}
-                        autoFocus
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => handleSaveName(session.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCancelEdit}
-                        className="h-8 w-8 p-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    session.name && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-lg font-semibold text-foreground">{session.name}</h4>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEditSession(session.id, session.name)}
-                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )
-                  )}
-                  <div className="text-2xl font-bold font-mono text-primary">
-                    {formatTime(session.time)}
-                  </div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(session.date)}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="text-sm text-muted-foreground">
-                      {session.laps.length} lap{session.laps.length !== 1 ? "s" : ""}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onDeleteSession(session.id)}
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {!session.name && editingSessionId !== session.id && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEditSession(session.id)}
-                      className="h-7 text-xs gap-1"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                      Add Name
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {session.laps.length > 0 && (
-                <div className="space-y-1 mt-3 pt-3 border-t border-border/30">
-                  {session.laps.map((lap, index) => (
-                    <div
-                      key={lap.id}
-                      className="flex justify-between text-sm"
-                    >
-                      <span className="text-muted-foreground">
-                        Lap {index + 1}
-                      </span>
-                      <span className="font-mono text-foreground">
-                        {formatTime(lap.time)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          ))}
-        </div>
-      </ScrollArea>
-      </Card>
     </div>
   );
 };
