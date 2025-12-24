@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Target } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AnalogClockProps {
     time: number;
@@ -34,7 +35,7 @@ export const AnalogClock: React.FC<AnalogClockProps> = ({
     const { hours, minutes, seconds, milliseconds } = formatTime(time);
 
     // Calculate dot position on the circle (completes rotation every 60 seconds)
-    const { x, y } = useMemo(() => {
+    const { x, y, angle } = useMemo(() => {
         const totalSeconds = time / 1000;
         const angle = (totalSeconds % 60) * 6 - 90; // 6 degrees per second, -90 to start at top
 
@@ -47,7 +48,7 @@ export const AnalogClock: React.FC<AnalogClockProps> = ({
         const x = centerX + radius * Math.cos((angle * Math.PI) / 180);
         const y = centerY + radius * Math.sin((angle * Math.PI) / 180);
 
-        return { x, y };
+        return { x, y, angle };
     }, [time, size]);
 
     // Scale factors
@@ -62,28 +63,32 @@ export const AnalogClock: React.FC<AnalogClockProps> = ({
 
     return (
         <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-            <svg width={size} height={size} className="absolute">
-                {/* Outer circle */}
-                <circle
+            <svg width={size} height={size} className="absolute overflow-visible">
+                {/* Outer circle with glow when running */}
+                <motion.circle
                     cx={center}
                     cy={center}
                     r={circleRadius}
                     fill="none"
-                    stroke="hsl(var(--border))"
+                    stroke="hsl(var(--primary) / 0.2)"
                     strokeWidth={strokeWidth}
-                    opacity="0.3"
+                    animate={isRunning ? {
+                        stroke: ["hsl(var(--primary) / 0.1)", "hsl(var(--primary) / 0.3)", "hsl(var(--primary) / 0.1)"],
+                        scale: [1, 1.02, 1]
+                    } : {}}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
 
                 {/* Hour markers */}
                 {[...Array(12)].map((_, i) => {
-                    const angle = (i * 30 - 90) * (Math.PI / 180);
-                    const x1 = center + markerLength1 * Math.cos(angle);
-                    const y1 = center + markerLength1 * Math.sin(angle);
-                    const x2 = center + markerLength2 * Math.cos(angle);
-                    const y2 = center + markerLength2 * Math.sin(angle);
+                    const markerAngle = (i * 30 - 90) * (Math.PI / 180);
+                    const x1 = center + markerLength1 * Math.cos(markerAngle);
+                    const y1 = center + markerLength1 * Math.sin(markerAngle);
+                    const x2 = center + markerLength2 * Math.cos(markerAngle);
+                    const y2 = center + markerLength2 * Math.sin(markerAngle);
 
                     return (
-                        <line
+                        <motion.line
                             key={i}
                             x1={x1}
                             y1={y1}
@@ -91,64 +96,100 @@ export const AnalogClock: React.FC<AnalogClockProps> = ({
                             y2={y2}
                             stroke="hsl(var(--primary))"
                             strokeWidth={strokeWidth}
-                            opacity="0.5"
+                            initial={{ opacity: 0.2 }}
+                            animate={isRunning ? { opacity: [0.2, 0.4, 0.2] } : { opacity: 0.3 }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                         />
                     );
                 })}
 
                 {/* Moving dot with glow */}
-                <circle
+                <motion.circle
                     cx={x}
                     cy={y}
                     r={dotRadius}
                     fill="hsl(var(--primary))"
-                    className={`${isRunning ? 'drop-shadow-[0_0_20px_hsl(var(--primary))]' : ''}`}
+                    animate={isRunning ? {
+                        opacity: [0.8, 1, 0.8],
+                        scale: [1, 1.1, 1]
+                    } : {}}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     style={{
-                        transition: 'cx 0.01s linear, cy 0.01s linear',
-                        filter: isRunning ? 'drop-shadow(0 0 20px hsl(var(--primary)))' : 'none'
+                        transition: 'cx 0.05s linear, cy 0.05s linear',
                     }}
                 />
 
                 {/* Trail effect */}
-                <circle
+                <motion.circle
                     cx={x}
                     cy={y}
                     r={trailRadius}
                     fill="none"
                     stroke="hsl(var(--primary))"
                     strokeWidth={strokeWidth}
-                    opacity="0.2"
-                    style={{ transition: 'cx 0.01s linear, cy 0.01s linear' }}
+                    animate={isRunning ? { opacity: [0.1, 0.2, 0.1], scale: [1, 1.1, 1] } : { opacity: 0.1 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ transition: 'cx 0.05s linear, cy 0.05s linear' }}
                 />
             </svg>
 
             {/* Digital Display - Centered */}
             {showDigital && (
                 <div className="relative z-10 flex flex-col items-center">
-                    {/* Active Task Badge */}
-                    {taskName && (
-                        <Badge
-                            variant="secondary"
-                            className="mb-2 px-3 py-1 text-xs font-medium bg-primary/20 text-primary border border-primary/30"
+                    <AnimatePresence mode="wait">
+                        {taskName && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                            >
+                                <Badge
+                                    variant="secondary"
+                                    className="mb-4 px-4 py-1.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded-full shadow-sm"
+                                >
+                                    <Target className="h-3.5 w-3.5 mr-2 animate-pulse" />
+                                    {taskName}
+                                </Badge>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <div className="flex flex-col items-center">
+                        <motion.div
+                            className="font-bold tracking-tight flex items-baseline"
+                            style={{ fontSize: `${56 * scale}px` }}
                         >
-                            <Target className="h-3 w-3 mr-1.5" />
-                            {taskName}
-                        </Badge>
-                    )}
-                    <div className={`font-bold tracking-tight ${isRunning ? 'animate-pulse-glow' : ''}`} style={{ fontSize: `${48 * scale}px` }}>
-                        <div className="flex items-baseline">
-                            <span className="text-foreground">{hours}</span>
-                            <span className="text-primary mx-1">:</span>
-                            <span className="text-foreground">{minutes}</span>
-                            <span className="text-primary mx-1">:</span>
-                            <span className="text-foreground">{seconds}</span>
-                        </div>
-                    </div>
-                    <div className="text-primary font-bold mt-1" style={{ fontSize: `${24 * scale}px` }}>
-                        {milliseconds}
+                            <motion.span animate={isRunning ? { opacity: [1, 0.8, 1] } : {}}>{hours}</motion.span>
+                            <motion.span
+                                animate={isRunning ? { opacity: [1, 0, 1] } : {}}
+                                transition={{ duration: 1, repeat: Infinity }}
+                                className="text-primary mx-1 opacity-50"
+                            >
+                                :
+                            </motion.span>
+                            <motion.span animate={isRunning ? { opacity: [1, 0.8, 1] } : {}}>{minutes}</motion.span>
+                            <motion.span
+                                animate={isRunning ? { opacity: [1, 0, 1] } : {}}
+                                transition={{ duration: 1, repeat: Infinity }}
+                                className="text-primary mx-1 opacity-50"
+                            >
+                                :
+                            </motion.span>
+                            <motion.span animate={isRunning ? { opacity: [1, 0.8, 1] } : {}} className="text-primary">{seconds}</motion.span>
+                        </motion.div>
+
+                        <motion.div
+                            className="text-primary/60 font-mono font-bold mt-[-8px]"
+                            style={{ fontSize: `${28 * scale}px` }}
+                            animate={isRunning ? { opacity: [0.4, 1, 0.4] } : {}}
+                            transition={{ duration: 0.5, repeat: Infinity }}
+                        >
+                            {milliseconds}
+                        </motion.div>
                     </div>
                 </div>
             )}
         </div>
     );
 };
+

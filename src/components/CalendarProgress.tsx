@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Clock, Flame, Target, Check, CalendarDays, Play, Pause, Plus, Trash2, CheckCircle2, Circle, Edit2, Search, Filter, X, Sparkles, TrendingUp, Zap, Loader2, Star, Copy, MoreVertical, Grid3x3, List, Calendar, BarChart3, Activity, ArrowLeft, ArrowRight, Home, Maximize2, Minimize2, ArrowDown } from "lucide-react";
@@ -51,78 +53,107 @@ const TodoList = ({ selectedDate }: TodoListProps) => {
   };
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-xl bg-primary/10">
-          <ListTodo className="h-5 w-5 text-primary" />
+    <Card className="p-6 bg-card/50 backdrop-blur-xl border-border/50 shadow-2xl rounded-[2rem]">
+      <div className="flex items-center gap-4 mb-6">
+        <div className="p-3 rounded-2xl bg-primary shadow-lg shadow-primary/20">
+          <ListTodo className="h-6 w-6 text-primary-foreground" />
         </div>
         <div>
-          <p className="text-lg font-bold text-foreground">To-Do List</p>
-          <p className="text-sm text-muted-foreground">
+          <h3 className="text-xl font-bold tracking-tight text-foreground">To-Do List</h3>
+          <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">
             {selectedDate ? format(selectedDate, "MMM d, yyyy") : "Today"}
           </p>
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-3 mb-6">
         <Input
           placeholder="Add a new task..."
           value={newTodo}
           onChange={(e) => setNewTodo(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          className="rounded-xl h-12 bg-secondary/30 border-border/50 focus:border-primary/50 focus:ring-primary/20"
         />
-        <Button onClick={handleAdd} size="icon">
-          <Plus className="h-4 w-4" />
-        </Button>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Button onClick={handleAdd} size="icon" className="h-12 w-12 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+            <Plus className="h-5 w-5" />
+          </Button>
+        </motion.div>
       </div>
 
-      <div className="space-y-2">
-        {isLoading ? (
-          <p className="text-center text-muted-foreground py-4">Loading...</p>
-        ) : todos.length === 0 ? (
-          <p className="text-center text-muted-foreground py-4">No to-dos for this day</p>
-        ) : (
-          todos.map((todo) => (
-            <div
-              key={todo.id}
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border border-border/50 transition-all",
-                todo.is_completed && "bg-secondary/30 opacity-60"
-              )}
+      <div className="space-y-3">
+        <AnimatePresence mode="popLayout">
+          {isLoading ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex justify-center py-8"
             >
-              <button
-                onClick={() => toggleTodo(todo.id, !todo.is_completed)}
-                className="flex-shrink-0"
-              >
-                {todo.is_completed ? (
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                ) : (
-                  <Circle className="h-5 w-5 text-muted-foreground" />
-                )}
-              </button>
-              <span
+              <Loader2 className="h-6 w-6 text-primary animate-spin" />
+            </motion.div>
+          ) : todos.length === 0 ? (
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center text-muted-foreground py-8 font-medium italic"
+            >
+              No to-dos for this day
+            </motion.p>
+          ) : (
+            todos.map((todo) => (
+              <motion.div
+                key={todo.id}
+                layout
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 className={cn(
-                  "flex-1 font-medium",
-                  todo.is_completed && "line-through text-muted-foreground"
+                  "flex items-center gap-4 p-4 rounded-2xl border transition-all group",
+                  todo.is_completed
+                    ? "bg-secondary/20 border-transparent opacity-60"
+                    : "bg-card border-border/50 shadow-sm hover:shadow-md hover:border-primary/20"
                 )}
               >
-                {todo.title}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => deleteTodo(todo.id)}
-                className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))
-        )}
+                <motion.button
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.8 }}
+                  onClick={() => toggleTodo(todo.id, !todo.is_completed)}
+                  className="flex-shrink-0"
+                >
+                  {todo.is_completed ? (
+                    <CheckCircle2 className="h-6 w-6 text-primary" />
+                  ) : (
+                    <Circle className="h-6 w-6 text-muted-foreground/40" />
+                  )}
+                </motion.button>
+                <span
+                  className={cn(
+                    "flex-1 font-semibold tracking-tight text-sm",
+                    todo.is_completed && "line-through text-muted-foreground"
+                  )}
+                >
+                  {todo.title}
+                </span>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteTodo(todo.id)}
+                    className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10 rounded-lg"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
       </div>
     </Card>
   );
 };
+
 
 interface LapTime {
   id: number;
@@ -753,50 +784,56 @@ export const CalendarProgress = ({
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
       {/* Task Management Section */}
-      <Card className="p-6 bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 shadow-md">
-              <Sparkles className="h-6 w-6 text-primary" />
+      <Card className="p-8 bg-card/50 backdrop-blur-xl border-border/50 shadow-2xl rounded-[2.5rem]">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-primary shadow-lg shadow-primary/20">
+              <Sparkles className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-xl font-bold text-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
                 Task Manager
-              </p>
-              <p className="text-sm text-muted-foreground">Track and manage your tasks efficiently</p>
+              </h2>
+              <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">Track and manage your tasks efficiently</p>
             </div>
           </div>
           <Dialog open={showCreateTaskDialog} onOpenChange={setShowCreateTaskDialog}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-md">
-                <Plus className="h-4 w-4" />
-                New Task
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button size="sm" className="gap-2 h-11 px-6 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+                  <Plus className="h-4 w-4" />
+                  New Task
+                </Button>
+              </motion.div>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md rounded-[2rem] border-border/50 backdrop-blur-2xl bg-card/80">
               <DialogHeader>
-                <DialogTitle className="text-xl">Create New Task</DialogTitle>
+                <DialogTitle className="text-2xl font-bold tracking-tight">Create New Task</DialogTitle>
                 <DialogDescription>
                   Set a task name and target time to track your progress
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="task-name">Task Name</Label>
+              <div className="space-y-6 pt-4">
+                <div className="space-y-3">
+                  <Label htmlFor="task-name" className="text-sm font-bold ml-1">Task Name</Label>
                   <Input
                     id="task-name"
                     placeholder="e.g., Study React, Workout, Read Book"
                     value={newTaskName}
                     onChange={(e) => setNewTaskName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
-                    className="text-base"
+                    className="rounded-xl h-12 bg-secondary/30 border-border/50 focus:border-primary/50 focus:ring-primary/20"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Target Time</Label>
-                  <div className="flex gap-2">
+                <div className="space-y-3">
+                  <Label className="text-sm font-bold ml-1">Target Time</Label>
+                  <div className="flex gap-3">
                     <div className="flex-1">
                       <Input
                         type="number"
@@ -804,7 +841,7 @@ export const CalendarProgress = ({
                         min="0"
                         value={targetHours}
                         onChange={(e) => setTargetHours(e.target.value)}
-                        className="text-base"
+                        className="rounded-xl h-12 bg-secondary/30 border-border/50 focus:border-primary/50 focus:ring-primary/20"
                       />
                     </div>
                     <div className="flex-1">
@@ -815,63 +852,66 @@ export const CalendarProgress = ({
                         max="59"
                         value={targetMinutes}
                         onChange={(e) => setTargetMinutes(e.target.value)}
-                        className="text-base"
+                        className="rounded-xl h-12 bg-secondary/30 border-border/50 focus:border-primary/50 focus:ring-primary/20"
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Quick Time Presets</Label>
+                  <div className="space-y-3">
+                    <Label className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest ml-1">Quick Time Presets</Label>
                     <div className="flex gap-2 flex-wrap">
                       {[15, 30, 45, 60, 90, 120].map((mins) => {
                         const h = Math.floor(mins / 60);
                         const m = mins % 60;
                         return (
-                          <Button
-                            key={mins}
-                            variant="outline"
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => {
-                              setTargetHours(h.toString());
-                              setTargetMinutes(m.toString());
-                            }}
-                          >
-                            {h > 0 ? `${h}h ` : ''}{m > 0 ? `${m}m` : ''}
-                          </Button>
+                          <motion.div key={mins} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs rounded-lg border-border/50 hover:bg-secondary/50 h-9 px-3"
+                              onClick={() => {
+                                setTargetHours(h.toString());
+                                setTargetMinutes(m.toString());
+                              }}
+                            >
+                              {h > 0 ? `${h}h ` : ''}{m > 0 ? `${m}m` : ''}
+                            </Button>
+                          </motion.div>
                         );
                       })}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Task Templates</Label>
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-3">
+                    <Label className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest ml-1">Task Templates</Label>
+                    <div className="grid grid-cols-2 gap-3">
                       {[
                         { name: 'Study Session', hours: 2, minutes: 0 },
                         { name: 'Workout', hours: 1, minutes: 0 },
                         { name: 'Reading', hours: 1, minutes: 30 },
                         { name: 'Coding', hours: 3, minutes: 0 },
                       ].map((template) => (
-                        <Button
-                          key={template.name}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs justify-start"
-                          onClick={() => {
-                            setNewTaskName(template.name);
-                            setTargetHours(template.hours.toString());
-                            setTargetMinutes(template.minutes.toString());
-                          }}
-                        >
-                          <Copy className="h-3 w-3 mr-1" />
-                          {template.name}
-                        </Button>
+                        <motion.div key={template.name} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Button
+                            key={template.name}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs justify-start rounded-xl border-border/50 hover:bg-secondary/50 h-10 w-full px-3"
+                            onClick={() => {
+                              setNewTaskName(template.name);
+                              setTargetHours(template.hours.toString());
+                              setTargetMinutes(template.minutes.toString());
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            {template.name}
+                          </Button>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
                 </div>
                 <Button
                   onClick={handleCreateTask}
-                  className="w-full bg-gradient-to-r from-primary to-accent"
+                  className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 font-bold"
                   disabled={isCreatingTask}
                 >
                   {isCreatingTask ? (
@@ -889,584 +929,668 @@ export const CalendarProgress = ({
               </div>
             </DialogContent>
           </Dialog>
-        </div>
+        </div >
 
         {/* Task Statistics */}
-        {tasks.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <div className="flex items-center gap-2 mb-1">
-                <Target className="h-4 w-4 text-primary" />
-                <span className="text-xs text-muted-foreground">Total</span>
-              </div>
-              <p className="text-lg font-bold text-foreground">{taskStats.total}</p>
+        {
+          tasks.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+              <motion.div whileHover={{ y: -5 }} className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Total Tasks</span>
+                </div>
+                <p className="text-2xl font-black text-foreground tracking-tighter">{taskStats.total}</p>
+              </motion.div>
+              <motion.div whileHover={{ y: -5 }} className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Completed</span>
+                </div>
+                <p className="text-2xl font-black text-foreground tracking-tighter">{taskStats.completed}</p>
+              </motion.div>
+              <motion.div whileHover={{ y: -5 }} className="p-4 rounded-2xl bg-accent/10 border border-accent/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="h-4 w-4 text-accent" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Active</span>
+                </div>
+                <p className="text-2xl font-black text-foreground tracking-tighter">{taskStats.active}</p>
+              </motion.div>
+              <motion.div whileHover={{ y: -5 }} className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Progress</span>
+                </div>
+                <p className="text-2xl font-black text-foreground tracking-tighter">{Math.round(taskStats.overallProgress)}%</p>
+              </motion.div>
             </div>
-            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-              <div className="flex items-center gap-2 mb-1">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span className="text-xs text-muted-foreground">Done</span>
-              </div>
-              <p className="text-lg font-bold text-foreground">{taskStats.completed}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-              <div className="flex items-center gap-2 mb-1">
-                <Zap className="h-4 w-4 text-accent" />
-                <span className="text-xs text-muted-foreground">Active</span>
-              </div>
-              <p className="text-lg font-bold text-foreground">{taskStats.active}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <span className="text-xs text-muted-foreground">Progress</span>
-              </div>
-              <p className="text-lg font-bold text-foreground">{Math.round(taskStats.overallProgress)}%</p>
-            </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Search and Filter */}
-        {tasks.length > 0 && (
-          <div className="space-y-3 mb-6">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-9"
-                />
-                {searchQuery && (
+        {
+          tasks.length > 0 && (
+            <div className="space-y-4 mb-8">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
+                  <Input
+                    placeholder="Search tasks..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-12 pr-12 h-12 rounded-2xl bg-secondary/20 border-border/50 focus:border-primary/50 focus:ring-primary/20"
+                  />
+                  <AnimatePresence>
+                    {searchQuery && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg hover:bg-secondary/50"
+                          onClick={() => setSearchQuery('')}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div className="flex gap-2 p-1 bg-secondary/30 rounded-2xl border border-border/50">
+                  {(['all', 'active', 'completed'] as const).map((status) => (
+                    <Button
+                      key={status}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFilterStatus(status)}
+                      className={cn(
+                        "capitalize rounded-xl h-10 px-4 transition-all duration-300",
+                        filterStatus === status
+                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                          : "text-muted-foreground hover:bg-secondary/50"
+                      )}
+                    >
+                      {status}
+                    </Button>
+                  ))}
+                </div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                {(['all', 'active', 'completed'] as const).map((status) => (
-                  <Button
-                    key={status}
-                    variant={filterStatus === status ? 'default' : 'outline'}
+                    variant={bulkSelectMode ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setFilterStatus(status)}
-                    className="capitalize"
-                  >
-                    <Filter className="h-3 w-3 mr-1" />
-                    {status}
-                  </Button>
-                ))}
-                <Button
-                  variant={bulkSelectMode ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setBulkSelectMode(!bulkSelectMode);
-                    if (bulkSelectMode) {
-                      setSelectedTasks(new Set());
-                    }
-                  }}
-                  title="Bulk select mode"
-                >
-                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                  Select
-                </Button>
-              </div>
-            </div>
-            {/* Bulk Actions */}
-            {bulkSelectMode && selectedTasks.size > 0 && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 animate-in slide-in-from-top-2">
-                <span className="text-sm font-medium text-foreground">
-                  {selectedTasks.size} task(s) selected
-                </span>
-                <div className="flex gap-2 ml-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleBulkComplete}
-                    className="gap-1"
-                  >
-                    <CheckCircle2 className="h-3 w-3" />
-                    Complete
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleBulkDelete}
-                    className="gap-1 text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Delete
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                    className={cn(
+                      "h-12 px-6 rounded-2xl gap-2 transition-all duration-300",
+                      bulkSelectMode ? "bg-primary shadow-lg shadow-primary/20" : "border-border/50 hover:bg-secondary/50"
+                    )}
                     onClick={() => {
-                      setSelectedTasks(new Set());
-                      setBulkSelectMode(false);
+                      setBulkSelectMode(!bulkSelectMode);
+                      if (bulkSelectMode) {
+                        setSelectedTasks(new Set());
+                      }
                     }}
                   >
-                    Done
+                    <CheckCircle2 className="h-4 w-4" />
+                    Select
                   </Button>
-                </div>
+                </motion.div>
               </div>
-            )}
-          </div>
-        )}
-
-        {tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border rounded-xl bg-gradient-to-br from-background to-secondary/20">
-            <div className="p-4 rounded-full bg-primary/10 mb-4">
-              <Sparkles className="h-12 w-12 text-primary" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">No tasks yet</h3>
-            <p className="text-muted-foreground mb-4 max-w-sm">
-              Create your first task to start tracking your time and achieving your goals!
-            </p>
-            <Dialog open={showCreateTaskDialog} onOpenChange={setShowCreateTaskDialog}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 bg-gradient-to-r from-primary to-accent">
-                  <Plus className="h-4 w-4" />
-                  Create Your First Task
-                </Button>
-              </DialogTrigger>
-            </Dialog>
-          </div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border rounded-xl">
-            <Search className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No tasks match your search criteria</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={() => {
-                setSearchQuery('');
-                setFilterStatus('all');
-              }}
-            >
-              Clear Filters
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredTasks.map((task) => {
-              const isActiveTask = currentTaskId === task.id;
-              const currentTaskTime = isActiveTask ? taskSessionTime : 0;
-              const displayTime = task.total_time_spent_ms + currentTaskTime;
-              const progress = Math.min((displayTime / task.target_time_ms) * 100, 100);
-              const overtime = displayTime > task.target_time_ms;
-
-              return (
-                <div
-                  key={task.id}
-                  className={cn(
-                    "group p-5 rounded-xl border transition-all duration-300 hover:shadow-lg",
-                    task.is_completed
-                      ? "bg-secondary/30 border-border/30 opacity-70"
-                      : "bg-gradient-to-br from-card to-card/80 border-primary/20 hover:border-primary/40",
-                    isActiveTask && isStopwatchRunning && "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/10 shadow-lg shadow-primary/20"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {bulkSelectMode && (
-                        <button
-                          onClick={() => toggleTaskSelection(task.id)}
-                          className="flex-shrink-0"
-                        >
-                          <div className={cn(
-                            "h-5 w-5 rounded border-2 flex items-center justify-center transition-all",
-                            selectedTasks.has(task.id)
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground/50 hover:border-primary"
-                          )}>
-                            {selectedTasks.has(task.id) && (
-                              <Check className="h-3 w-3 text-primary-foreground" />
-                            )}
-                          </div>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleToggleComplete(task)}
-                        className={cn(
-                          "hover:scale-110 transition-all flex-shrink-0",
-                          task.is_completed && "opacity-60"
-                        )}
+              {/* Bulk Actions */}
+              <AnimatePresence>
+                {bulkSelectMode && selectedTasks.size > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-primary/10 border border-primary/20 shadow-lg shadow-primary/5"
+                  >
+                    <span className="text-sm font-bold text-foreground">
+                      {selectedTasks.size} task(s) selected
+                    </span>
+                    <div className="flex gap-2 ml-auto">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBulkComplete}
+                        className="gap-2 rounded-xl border-border/50 hover:bg-secondary/50"
                       >
-                        {task.is_completed ? (
-                          <CheckCircle2 className="h-6 w-6 text-primary" />
-                        ) : (
-                          <Circle className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors" />
+                        <CheckCircle2 className="h-4 w-4" />
+                        Complete
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                        className="gap-2 rounded-xl border-border/50 hover:bg-destructive/10 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTasks(new Set());
+                          setBulkSelectMode(false);
+                        }}
+                        className="rounded-xl"
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )
+        }
+
+        {
+          tasks.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-border/50 rounded-[2.5rem] bg-secondary/10"
+            >
+              <div className="p-6 rounded-full bg-primary/10 mb-6">
+                <Sparkles className="h-12 w-12 text-primary" />
+              </div>
+              <h3 className="text-2xl font-black tracking-tighter text-foreground mb-2">No tasks yet</h3>
+              <p className="text-muted-foreground mb-8 max-w-sm font-medium">
+                Create your first task to start tracking your time and achieving your goals!
+              </p>
+              <Dialog open={showCreateTaskDialog} onOpenChange={setShowCreateTaskDialog}>
+                <DialogTrigger asChild>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button className="gap-2 h-12 px-8 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 font-bold">
+                      <Plus className="h-5 w-5" />
+                      Create Your First Task
+                    </Button>
+                  </motion.div>
+                </DialogTrigger>
+              </Dialog>
+            </motion.div>
+          ) : filteredTasks.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-border/50 rounded-[2.5rem]"
+            >
+              <div className="p-4 bg-secondary/20 rounded-full mb-4">
+                <Search className="h-10 w-10 text-muted-foreground/50" />
+              </div>
+              <p className="text-muted-foreground font-medium">No tasks match your search criteria</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-6 rounded-xl border-border/50 hover:bg-secondary/50"
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterStatus('all');
+                }}
+              >
+                Clear Filters
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: {
+                    staggerChildren: 0.05
+                  }
+                }
+              }}
+              initial="hidden"
+              animate="visible"
+              className="space-y-4"
+            >
+              {filteredTasks.map((task) => {
+                const isActiveTask = currentTaskId === task.id;
+                const currentTaskTime = isActiveTask ? taskSessionTime : 0;
+                const displayTime = task.total_time_spent_ms + currentTaskTime;
+                const progress = Math.min((displayTime / task.target_time_ms) * 100, 100);
+                const overtime = displayTime > task.target_time_ms;
+
+                return (
+                  <motion.div
+                    key={task.id}
+                    variants={{
+                      hidden: { opacity: 0, x: -10 },
+                      visible: { opacity: 1, x: 0 }
+                    }}
+                    className={cn(
+                      "group p-6 rounded-[2rem] border transition-all duration-500 relative overflow-hidden",
+                      task.is_completed
+                        ? "bg-secondary/20 border-transparent opacity-60"
+                        : "bg-card border-border/50 shadow-sm hover:shadow-xl hover:border-primary/20",
+                      isActiveTask && isStopwatchRunning && "ring-2 ring-primary ring-offset-4 ring-offset-background bg-primary/5 shadow-2xl shadow-primary/10"
+                    )}
+                  >
+                    {isActiveTask && isStopwatchRunning && (
+                      <motion.div
+                        layoutId="active-task-glow"
+                        className="absolute inset-0 bg-primary/5 animate-pulse-glow pointer-events-none"
+                      />
+                    )}
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {bulkSelectMode && (
+                          <button
+                            onClick={() => toggleTaskSelection(task.id)}
+                            className="flex-shrink-0"
+                          >
+                            <div className={cn(
+                              "h-5 w-5 rounded border-2 flex items-center justify-center transition-all",
+                              selectedTasks.has(task.id)
+                                ? "bg-primary border-primary"
+                                : "border-muted-foreground/50 hover:border-primary"
+                            )}>
+                              {selectedTasks.has(task.id) && (
+                                <Check className="h-3 w-3 text-primary-foreground" />
+                              )}
+                            </div>
+                          </button>
                         )}
-                      </button>
-                      {editingTaskId === task.id ? (
-                        <div className="flex-1 space-y-2">
-                          <Input
-                            value={editTaskName}
-                            onChange={(e) => setEditTaskName(e.target.value)}
-                            className="text-base font-medium"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveEdit(task.id);
-                              if (e.key === 'Escape') handleCancelEdit();
-                            }}
-                            autoFocus
-                          />
-                          <div className="flex gap-2">
+                        <button
+                          onClick={() => handleToggleComplete(task)}
+                          className={cn(
+                            "hover:scale-110 transition-all flex-shrink-0",
+                            task.is_completed && "opacity-60"
+                          )}
+                        >
+                          {task.is_completed ? (
+                            <CheckCircle2 className="h-6 w-6 text-primary" />
+                          ) : (
+                            <Circle className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors" />
+                          )}
+                        </button>
+                        {editingTaskId === task.id ? (
+                          <div className="flex-1 space-y-2">
                             <Input
-                              type="number"
-                              placeholder="Hours"
-                              value={editTaskHours}
-                              onChange={(e) => setEditTaskHours(e.target.value)}
-                              className="flex-1"
+                              value={editTaskName}
+                              onChange={(e) => setEditTaskName(e.target.value)}
+                              className="text-base font-medium"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEdit(task.id);
+                                if (e.key === 'Escape') handleCancelEdit();
+                              }}
+                              autoFocus
                             />
-                            <Input
-                              type="number"
-                              placeholder="Minutes"
-                              value={editTaskMinutes}
-                              onChange={(e) => setEditTaskMinutes(e.target.value)}
-                              className="flex-1"
-                            />
+                            <div className="flex gap-2">
+                              <Input
+                                type="number"
+                                placeholder="Hours"
+                                value={editTaskHours}
+                                onChange={(e) => setEditTaskHours(e.target.value)}
+                                className="flex-1"
+                              />
+                              <Input
+                                type="number"
+                                placeholder="Minutes"
+                                value={editTaskMinutes}
+                                onChange={(e) => setEditTaskMinutes(e.target.value)}
+                                className="flex-1"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveEdit(task.id)}
+                                className="gap-1"
+                                disabled={isUpdatingTask === task.id}
+                              >
+                                {isUpdatingTask === task.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Check className="h-3 w-3" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelEdit}
+                                className="gap-1"
+                                disabled={isUpdatingTask === task.id}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <span className={cn(
+                              "font-semibold text-base truncate",
+                              task.is_completed && "line-through text-muted-foreground"
+                            )}>
+                              {task.name}
+                            </span>
+                            {isActiveTask && isStopwatchRunning && (
+                              <Badge variant="default" className="bg-gradient-to-r from-primary to-accent animate-pulse gap-1.5 flex-shrink-0 shadow-md">
+                                <Play className="h-3 w-3" />
+                                Running
+                              </Badge>
+                            )}
+                            {isActiveTask && !isStopwatchRunning && currentStopwatchTime > 0 && (
+                              <Badge variant="secondary" className="gap-1.5 flex-shrink-0">
+                                <Pause className="h-3 w-3" />
+                                Paused
+                              </Badge>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      {editingTaskId !== task.id && (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {!task.is_completed && (
                             <Button
+                              variant={isActiveTask ? "default" : "outline"}
                               size="sm"
-                              onClick={() => handleSaveEdit(task.id)}
-                              className="gap-1"
-                              disabled={isUpdatingTask === task.id}
+                              onClick={() => {
+                                if (isActiveTask && isStopwatchRunning) {
+                                  onStartStopwatch?.();
+                                } else if (isActiveTask && !isStopwatchRunning) {
+                                  onStartStopwatch?.();
+                                } else {
+                                  onSelectTask?.(task.id);
+                                  if (!isStopwatchRunning) {
+                                    onStartStopwatch?.();
+                                  }
+                                }
+                              }}
+                              className={cn(
+                                "gap-1.5 h-8 transition-all",
+                                isActiveTask && "bg-gradient-to-r from-primary to-accent shadow-md"
+                              )}
                             >
-                              {isUpdatingTask === task.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                              {isActiveTask && isStopwatchRunning ? (
+                                <><Pause className="h-3.5 w-3.5" /> Pause</>
+                              ) : isActiveTask ? (
+                                <><Play className="h-3.5 w-3.5" /> Resume</>
+                              ) : currentTaskId ? (
+                                <><Play className="h-3.5 w-3.5" /> Switch</>
                               ) : (
-                                <Check className="h-3 w-3" />
+                                <><Play className="h-3.5 w-3.5" /> Start</>
                               )}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleCancelEdit}
-                              className="gap-1"
-                              disabled={isUpdatingTask === task.id}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <span className={cn(
-                            "font-semibold text-base truncate",
-                            task.is_completed && "line-through text-muted-foreground"
-                          )}>
-                            {task.name}
-                          </span>
-                          {isActiveTask && isStopwatchRunning && (
-                            <Badge variant="default" className="bg-gradient-to-r from-primary to-accent animate-pulse gap-1.5 flex-shrink-0 shadow-md">
-                              <Play className="h-3 w-3" />
-                              Running
-                            </Badge>
                           )}
-                          {isActiveTask && !isStopwatchRunning && currentStopwatchTime > 0 && (
-                            <Badge variant="secondary" className="gap-1.5 flex-shrink-0">
-                              <Pause className="h-3 w-3" />
-                              Paused
-                            </Badge>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    {editingTaskId !== task.id && (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        {!task.is_completed && (
                           <Button
-                            variant={isActiveTask ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              if (isActiveTask && isStopwatchRunning) {
-                                onStartStopwatch?.();
-                              } else if (isActiveTask && !isStopwatchRunning) {
-                                onStartStopwatch?.();
-                              } else {
-                                onSelectTask?.(task.id);
-                                if (!isStopwatchRunning) {
-                                  onStartStopwatch?.();
-                                }
-                              }
-                            }}
-                            className={cn(
-                              "gap-1.5 h-8 transition-all",
-                              isActiveTask && "bg-gradient-to-r from-primary to-accent shadow-md"
-                            )}
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleStartEdit(task)}
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            disabled={isDeletingTask === task.id || isUpdatingTask === task.id}
                           >
-                            {isActiveTask && isStopwatchRunning ? (
-                              <><Pause className="h-3.5 w-3.5" /> Pause</>
-                            ) : isActiveTask ? (
-                              <><Play className="h-3.5 w-3.5" /> Resume</>
-                            ) : currentTaskId ? (
-                              <><Play className="h-3.5 w-3.5" /> Switch</>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDuplicateTask(task)}
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            disabled={isDeletingTask === task.id || isUpdatingTask === task.id || isCreatingTask}
+                            title="Duplicate task"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            disabled={isDeletingTask === task.id || isUpdatingTask === task.id}
+                          >
+                            {isDeletingTask === task.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <><Play className="h-3.5 w-3.5" /> Start</>
+                              <Trash2 className="h-4 w-4" />
                             )}
                           </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleStartEdit(task)}
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          disabled={isDeletingTask === task.id || isUpdatingTask === task.id}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDuplicateTask(task)}
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          disabled={isDeletingTask === task.id || isUpdatingTask === task.id || isCreatingTask}
-                          title="Duplicate task"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          disabled={isDeletingTask === task.id || isUpdatingTask === task.id}
-                        >
-                          {isDeletingTask === task.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {isActiveTask && isStopwatchRunning && (
+                      <div className="bg-primary/10 rounded-lg p-3 text-center mb-3 flex flex-col items-center gap-2">
+                        <AnalogClock
+                          time={taskSessionTime}
+                          isRunning={true}
+                          size={120}
+                          showDigital={false}
+                        />
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Current Session</p>
+                          <p className="font-mono text-2xl font-bold text-primary">{formatTime(taskSessionTime)}</p>
+                        </div>
                       </div>
                     )}
-                  </div>
 
-                  {isActiveTask && isStopwatchRunning && (
-                    <div className="bg-primary/10 rounded-lg p-3 text-center mb-3 flex flex-col items-center gap-2">
-                      <AnalogClock
-                        time={taskSessionTime}
-                        isRunning={true}
-                        size={120}
-                        showDigital={false}
-                      />
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Current Session</p>
-                        <p className="font-mono text-2xl font-bold text-primary">{formatTime(taskSessionTime)}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {editingTaskId !== task.id && (
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-muted-foreground">Progress</span>
-                          <Badge
-                            variant={overtime ? "destructive" : progress >= 100 ? "default" : "secondary"}
+                    {editingTaskId !== task.id && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-muted-foreground">Progress</span>
+                            <Badge
+                              variant={overtime ? "destructive" : progress >= 100 ? "default" : "secondary"}
+                              className={cn(
+                                "text-xs font-semibold",
+                                progress >= 100 && "bg-gradient-to-r from-green-500 to-emerald-500"
+                              )}
+                            >
+                              {Math.round(progress)}%
+                            </Badge>
+                          </div>
+                          <span className="font-mono text-sm font-semibold">
+                            {formatTime(displayTime)} / {formatTime(task.target_time_ms)}
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <Progress
+                            value={Math.min(progress, 100)}
                             className={cn(
-                              "text-xs font-semibold",
+                              "h-3 transition-all duration-500",
+                              overtime && "bg-destructive/20",
                               progress >= 100 && "bg-gradient-to-r from-green-500 to-emerald-500"
                             )}
-                          >
-                            {Math.round(progress)}%
-                          </Badge>
-                        </div>
-                        <span className="font-mono text-sm font-semibold">
-                          {formatTime(displayTime)} / {formatTime(task.target_time_ms)}
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <Progress
-                          value={Math.min(progress, 100)}
-                          className={cn(
-                            "h-3 transition-all duration-500",
-                            overtime && "bg-destructive/20",
-                            progress >= 100 && "bg-gradient-to-r from-green-500 to-emerald-500"
-                          )}
-                        />
-                        {progress > 100 && (
-                          <div
-                            className="absolute top-0 left-0 h-3 bg-destructive/30 rounded-full transition-all duration-500"
-                            style={{ width: `${progress}%` }}
                           />
-                        )}
+                          {progress > 100 && (
+                            <div
+                              className="absolute top-0 left-0 h-3 bg-destructive/30 rounded-full transition-all duration-500"
+                              style={{ width: `${progress}%` }}
+                            />
+                          )}
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          {overtime && (
+                            <Badge variant="destructive" className="text-xs gap-1">
+                              <Clock className="h-3 w-3" />
+                              +{formatTime(displayTime - task.target_time_ms)} overtime
+                            </Badge>
+                          )}
+                          {!task.is_completed && progress < 100 && (
+                            <Badge variant="outline" className="text-xs text-muted-foreground gap-1">
+                              <Target className="h-3 w-3" />
+                              {formatTime(task.target_time_ms - displayTime)} remaining
+                            </Badge>
+                          )}
+                          {task.is_completed && (
+                            <Badge variant="default" className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Completed
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-2 flex-wrap">
-                        {overtime && (
-                          <Badge variant="destructive" className="text-xs gap-1">
-                            <Clock className="h-3 w-3" />
-                            +{formatTime(displayTime - task.target_time_ms)} overtime
-                          </Badge>
-                        )}
-                        {!task.is_completed && progress < 100 && (
-                          <Badge variant="outline" className="text-xs text-muted-foreground gap-1">
-                            <Target className="h-3 w-3" />
-                            {formatTime(task.target_time_ms - displayTime)} remaining
-                          </Badge>
-                        )}
-                        {task.is_completed && (
-                          <Badge variant="default" className="text-xs bg-gradient-to-r from-green-500 to-emerald-500 gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Completed
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )
+        }
+      </Card >
 
       {/* To-Do List Section */}
-      <TodoList selectedDate={selectedDate} />
+      < TodoList selectedDate={selectedDate} />
 
       {/* Today's Progress */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/20">
-              <Target className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Today's Goal</p>
-              <p className="text-lg font-bold text-foreground">
-                {formatTime(todayTime)} / {formatTime(dailyGoalMs)}
-              </p>
-            </div>
+      <motion.div whileHover={{ y: -5 }} className="transition-all duration-500">
+        <Card className="p-8 rounded-[2.5rem] bg-card/50 backdrop-blur-xl border-border/50 shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Target className="h-32 w-32 text-primary" />
           </div>
-        </div>
-
-        {/* Progress bar */}
-        <div className="relative">
-          <div className="h-3 bg-secondary rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                todayProgress >= 100 ? "bg-green-500" : "bg-primary"
-              )}
-              style={{ width: `${todayProgress}%` }}
-            />
-          </div>
-          {todayProgress >= 100 && (
-            <div className="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5">
-              <Check className="h-3 w-3 text-white" />
-            </div>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          {todayProgress >= 100
-            ? "Goal achieved! Great job!"
-            : `${Math.round(todayProgress)}% complete`}
-        </p>
-      </Card>
-
-      {/* Weekly Progress Card */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-accent/20">
-              <CalendarDays className="h-5 w-5 text-accent-foreground" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">This Week</p>
-              <p className="text-lg font-bold text-foreground">
-                {formatTime(weeklyProgress.time)} / {formatTime(weeklyGoalMs)}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">{weeklyProgress.daysTracked}/7 days tracked</p>
-          </div>
-        </div>
-
-        {/* Weekly progress bar */}
-        <div className="relative">
-          <div className="h-3 bg-secondary rounded-full overflow-hidden">
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                weeklyProgress.percentage >= 100 ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-primary to-primary/70"
-              )}
-              style={{ width: `${weeklyProgress.percentage}%` }}
-            />
-          </div>
-          {weeklyProgress.percentage >= 100 && (
-            <div className="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5">
-              <Check className="h-3 w-3 text-white" />
-            </div>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          {weeklyProgress.percentage >= 100
-            ? "Weekly goal achieved! Amazing work!"
-            : `${Math.round(weeklyProgress.percentage)}% of weekly goal`}
-        </p>
-      </Card>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Card className="p-2 sm:p-4">
-          <div className="flex flex-col items-center text-center">
-            <div className="p-1.5 sm:p-2 rounded-xl bg-primary/20 mb-1 sm:mb-2">
-              <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Streak</p>
-            <p className="text-base sm:text-xl font-bold text-foreground">{currentStreak}</p>
-          </div>
-        </Card>
-
-        <Card className="p-2 sm:p-4">
-          <div className="flex flex-col items-center text-center">
-            <div className="p-1.5 sm:p-2 rounded-xl bg-green-500/20 mb-1 sm:mb-2">
-              <Check className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Goals Met</p>
-            <p className="text-base sm:text-xl font-bold text-foreground">{daysGoalMet}</p>
-          </div>
-        </Card>
-
-        <Card className="p-2 sm:p-4">
-          <div className="flex flex-col items-center text-center">
-            <div className="p-1.5 sm:p-2 rounded-xl bg-accent/20 mb-1 sm:mb-2">
-              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-accent-foreground" />
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">This Month</p>
-            <p className="text-base sm:text-xl font-bold text-foreground">{formatTimeShort(monthTotal)}</p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Calendar Section - Integrated with History */}
-      <Card className="p-3 sm:p-6 bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
-        {/* Header */}
-        <div className="flex flex-col gap-4 mb-4 sm:mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20">
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-2xl bg-primary/10">
+                <Target className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Calendar View
-                </h2>
-                <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
-                  {calendarView === 'month' && `${daysGoalMet} days goal met this month`}
-                  {calendarView === 'week' && 'Weekly view'}
-                  {calendarView === 'day' && format(currentMonth, "EEEE, MMMM d, yyyy")}
-                  {selectedDate && ` • Selected: ${format(selectedDate, "MMM d")}`}
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Today's Goal</p>
+                <p className="text-3xl font-bold text-foreground tracking-tight">
+                  {formatTime(todayTime)} <span className="text-muted-foreground/30">/</span> {formatTime(dailyGoalMs)}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+          </div>
+
+          {/* Progress bar */}
+          <div className="relative h-4 bg-secondary/30 rounded-full overflow-hidden mb-4">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${todayProgress}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className={cn(
+                "h-full rounded-full shadow-lg",
+                todayProgress >= 100 ? "bg-green-500" : "bg-primary"
+              )}
+            />
+            {todayProgress >= 100 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white rounded-full p-0.5 shadow-sm"
+              >
+                <Check className="h-2 w-2 text-green-500" />
+              </motion.div>
+            )}
+          </div>
+          <p className="text-sm font-bold text-muted-foreground/60 text-center">
+            {todayProgress >= 100
+              ? "Goal achieved! Great job!"
+              : `${Math.round(todayProgress)}% complete`}
+          </p>
+        </Card>
+      </motion.div>
+
+      {/* Weekly Progress Card */}
+      <motion.div whileHover={{ y: -5 }} className="transition-all duration-500">
+        <Card className="p-8 rounded-[2.5rem] bg-card/50 backdrop-blur-xl border-border/50 shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+            <CalendarDays className="h-32 w-32 text-accent" />
+          </div>
+          <div className="flex items-center justify-between mb-8 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-2xl bg-accent/10">
+                <CalendarDays className="h-6 w-6 text-accent-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">This Week</p>
+                <p className="text-3xl font-bold text-foreground tracking-tight">
+                  {formatTime(weeklyProgress.time)} <span className="text-muted-foreground/30">/</span> {formatTime(weeklyGoalMs)}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-muted-foreground/60">{weeklyProgress.daysTracked}/7 days</p>
+            </div>
+          </div>
+
+          {/* Weekly progress bar */}
+          <div className="relative h-4 bg-secondary/30 rounded-full overflow-hidden mb-4">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${weeklyProgress.percentage}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className={cn(
+                "h-full rounded-full shadow-lg",
+                weeklyProgress.percentage >= 100 ? "bg-gradient-to-r from-green-500 to-emerald-400" : "bg-gradient-to-r from-primary to-primary/70"
+              )}
+            />
+            {weeklyProgress.percentage >= 100 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white rounded-full p-0.5 shadow-sm"
+              >
+                <Check className="h-2 w-2 text-green-500" />
+              </motion.div>
+            )}
+          </div>
+          <p className="text-sm font-bold text-muted-foreground/60 text-center">
+            {weeklyProgress.percentage >= 100
+              ? "Weekly goal achieved! Amazing work!"
+              : `${Math.round(weeklyProgress.percentage)}% of weekly goal`}
+          </p>
+        </Card>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <motion.div whileHover={{ y: -5 }} whileTap={{ scale: 0.98 }}>
+          <Card className="p-6 rounded-[2rem] bg-card/50 backdrop-blur-xl border-border/50 shadow-xl flex flex-col items-center text-center group">
+            <div className="p-3 rounded-2xl bg-primary/10 mb-3 group-hover:bg-primary/20 transition-colors">
+              <Flame className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Streak</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{currentStreak}</p>
+          </Card>
+        </motion.div>
+
+        <motion.div whileHover={{ y: -5 }} whileTap={{ scale: 0.98 }}>
+          <Card className="p-6 rounded-[2rem] bg-card/50 backdrop-blur-xl border-border/50 shadow-xl flex flex-col items-center text-center group">
+            <div className="p-3 rounded-2xl bg-green-500/10 mb-3 group-hover:bg-green-500/20 transition-colors">
+              <Check className="h-6 w-6 text-green-500" />
+            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Goals Met</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{daysGoalMet}</p>
+          </Card>
+        </motion.div>
+
+        <motion.div whileHover={{ y: -5 }} whileTap={{ scale: 0.98 }}>
+          <Card className="p-6 rounded-[2rem] bg-card/50 backdrop-blur-xl border-border/50 shadow-xl flex flex-col items-center text-center group">
+            <div className="p-3 rounded-2xl bg-accent/10 mb-3 group-hover:bg-accent/20 transition-colors">
+              <Clock className="h-6 w-6 text-accent-foreground" />
+            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">This Month</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">{formatTimeShort(monthTotal)}</p>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Calendar Section - Integrated with History */}
+      <Card className="p-8 rounded-[2.5rem] bg-card/50 backdrop-blur-xl border-border/50 shadow-2xl">
+        {/* Header */}
+        <div className="flex flex-col gap-6 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-2xl bg-primary/10">
+                <Calendar className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">
+                  Calendar View
+                </h2>
+                <p className="text-sm font-bold text-muted-foreground/60 uppercase tracking-widest">
+                  {calendarView === 'month' && `${daysGoalMet} days goal met this month`}
+                  {calendarView === 'week' && 'Weekly view'}
+                  {calendarView === 'day' && format(currentMonth, "EEEE, MMMM d, yyyy")}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-secondary/30 p-1 rounded-xl border border-border/50">
               <Button
                 variant="ghost"
                 size="icon"
@@ -1479,9 +1603,9 @@ export const CalendarProgress = ({
                     setCurrentMonth(subMonths(currentMonth, 1 / 30));
                   }
                 }}
-                className="h-9 w-9 sm:h-8 sm:w-8"
+                className="h-9 w-9 rounded-lg hover:bg-secondary/50"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-5 w-5" />
               </Button>
               <Button
                 variant="ghost"
@@ -1495,365 +1619,410 @@ export const CalendarProgress = ({
                     setCurrentMonth(addMonths(currentMonth, 1 / 30));
                   }
                 }}
-                className="h-9 w-9 sm:h-8 sm:w-8"
+                className="h-9 w-9 rounded-lg hover:bg-secondary/50"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-5 w-5" />
               </Button>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             {/* View Mode Switcher */}
-            <div className="flex items-center gap-1 bg-secondary/50 rounded-lg p-0.5 sm:p-1 flex-1 sm:flex-initial">
-              <Button
-                variant={calendarView === 'month' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setCalendarView('month')}
-                className="h-8 sm:h-7 px-2 sm:px-3 flex-1 sm:flex-initial text-xs"
-              >
-                <Grid3x3 className="h-3 w-3 sm:mr-1" />
-                <span className="hidden sm:inline">Month</span>
-              </Button>
-              <Button
-                variant={calendarView === 'week' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setCalendarView('week')}
-                className="h-8 sm:h-7 px-2 sm:px-3 flex-1 sm:flex-initial text-xs"
-              >
-                <List className="h-3 w-3 sm:mr-1" />
-                <span className="hidden sm:inline">Week</span>
-              </Button>
-              <Button
-                variant={calendarView === 'day' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setCalendarView('day')}
-                className="h-8 sm:h-7 px-2 sm:px-3 flex-1 sm:flex-initial text-xs"
-              >
-                <Calendar className="h-3 w-3 sm:mr-1" />
-                <span className="hidden sm:inline">Day</span>
-              </Button>
+            <div className="flex items-center gap-1 bg-secondary/30 rounded-2xl p-1 border border-border/50 flex-1 sm:flex-initial">
+              {(['month', 'week', 'day'] as const).map((view) => (
+                <Button
+                  key={view}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCalendarView(view)}
+                  className={cn(
+                    "h-10 px-6 rounded-xl flex-1 sm:flex-initial text-xs font-bold transition-all duration-300",
+                    calendarView === view
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "text-muted-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  {view === 'month' && <Grid3x3 className="h-4 w-4 mr-2" />}
+                  {view === 'week' && <List className="h-4 w-4 mr-2" />}
+                  {view === 'day' && <Calendar className="h-4 w-4 mr-2" />}
+                  <span className="capitalize">{view}</span>
+                </Button>
+              ))}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToToday}
-              className="gap-1 h-8 sm:h-7 text-xs sm:text-sm"
-            >
-              <Home className="h-3 w-3" />
-              <span className="hidden sm:inline">Today</span>
-              <span className="sm:hidden">Now</span>
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1 sm:flex-initial">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToToday}
+                className="gap-2 h-12 px-6 rounded-2xl border-border/50 hover:bg-secondary/50 font-bold w-full"
+              >
+                <Home className="h-4 w-4" />
+                Today
+              </Button>
+            </motion.div>
           </div>
         </div>
 
         {/* Week days header */}
-        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
-          {weekDays.map((day) => (
-            <div
-              key={day}
-              className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground py-1 sm:py-2"
-            >
-              <span className="hidden sm:inline">{day}</span>
-              <span className="sm:hidden">{day.substring(0, 1)}</span>
-            </div>
-          ))}
-        </div>
+        < div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2" >
+          {
+            weekDays.map((day) => (
+              <div
+                key={day}
+                className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground py-1 sm:py-2"
+              >
+                <span className="hidden sm:inline">{day}</span>
+                <span className="sm:hidden">{day.substring(0, 1)}</span>
+              </div>
+            ))
+          }
+        </div >
 
         {/* Calendar grid */}
-        {calendarView === 'month' && (
-          <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
-            {days.map((day) => {
-              const dayKey = format(day, "yyyy-MM-dd");
-              const dayTime = timeByDay.get(dayKey) || 0;
-              const isCurrentMonth = isSameMonth(day, currentMonth);
-              const isSelected = selectedDate && isSameDay(day, selectedDate);
-              const isTodayDate = isToday(day);
-              const goalMet = dayTime >= dailyGoalMs;
-              const isHovered = hoveredDate && isSameDay(day, hoveredDate);
-              const progressPercent = dailyGoalMs > 0 ? Math.min((dayTime / dailyGoalMs) * 100, 100) : 0;
+        {
+          calendarView === 'month' && (
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+              {days.map((day) => {
+                const dayKey = format(day, "yyyy-MM-dd");
+                const dayTime = timeByDay.get(dayKey) || 0;
+                const isCurrentMonth = isSameMonth(day, currentMonth);
+                const isSelected = selectedDate && isSameDay(day, selectedDate);
+                const isTodayDate = isToday(day);
+                const goalMet = dayTime >= dailyGoalMs;
+                const isHovered = hoveredDate && isSameDay(day, hoveredDate);
+                const progressPercent = dailyGoalMs > 0 ? Math.min((dayTime / dailyGoalMs) * 100, 100) : 0;
 
-              return (
-                <button
-                  key={day.toISOString()}
-                  onClick={() => {
-                    setSelectedDate(isSelected ? null : day);
-                    setShowDayDetails(true);
-                  }}
-                  onMouseEnter={() => setHoveredDate(day)}
-                  onMouseLeave={() => setHoveredDate(null)}
-                  className={cn(
-                    "relative aspect-square p-0.5 sm:p-1 rounded-md sm:rounded-lg transition-all duration-200 flex flex-col items-center justify-center gap-0.5 sm:gap-1 group touch-manipulation",
-                    !isCurrentMonth && "opacity-30",
-                    isSelected && "ring-2 ring-primary ring-offset-1 sm:ring-offset-2 ring-offset-background shadow-md sm:shadow-lg",
-                    isTodayDate && !isSelected && "ring-1 sm:ring-2 ring-primary/50 bg-primary/5",
-                    goalMet && "bg-green-500/10",
-                    isHovered && "scale-105 shadow-md",
-                    "active:scale-95 hover:bg-secondary/50"
-                  )}
-                >
-                  <span
+                return (
+                  <motion.button
+                    key={day.toISOString()}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setSelectedDate(isSelected ? null : day);
+                      setShowDayDetails(true);
+                    }}
+                    onMouseEnter={() => setHoveredDate(day)}
+                    onMouseLeave={() => setHoveredDate(null)}
                     className={cn(
-                      "text-[11px] sm:text-sm font-medium transition-colors leading-none",
-                      isTodayDate && "text-primary font-bold",
-                      goalMet && !isTodayDate && "text-green-500",
-                      !isTodayDate && !goalMet && "text-foreground"
+                      "relative aspect-square p-2 rounded-xl transition-all duration-300 flex flex-col items-center justify-center gap-1 group touch-manipulation",
+                      !isCurrentMonth && "opacity-20",
+                      isSelected && "ring-2 ring-primary ring-offset-4 ring-offset-background shadow-xl bg-primary/5",
+                      isTodayDate && !isSelected && "ring-1 ring-primary/30 bg-primary/5",
+                      goalMet && "bg-green-500/10",
+                      "hover:bg-secondary/50"
                     )}
                   >
-                    {format(day, "d")}
-                  </span>
-                  {dayTime > 0 && (
-                    <div className="w-full flex flex-col items-center gap-0.5">
-                      {goalMet ? (
-                        <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-green-500" />
-                      ) : (
-                        <>
-                          <div
-                            className={cn(
-                              "w-full h-0.5 sm:h-1 rounded-full transition-all",
-                              getIntensity(dayTime)
-                            )}
-                          />
-                          <span className="text-[8px] sm:text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 transition-opacity hidden sm:block">
-                            {formatTimeShort(dayTime)}
-                          </span>
-                        </>
+                    <span
+                      className={cn(
+                        "text-[11px] sm:text-sm font-medium transition-colors leading-none",
+                        isTodayDate && "text-primary font-bold",
+                        goalMet && !isTodayDate && "text-green-500",
+                        !isTodayDate && !goalMet && "text-foreground"
                       )}
-                    </div>
-                  )}
-                  {/* Progress indicator ring - hidden on mobile for better performance */}
-                  {dailyGoalMs > 0 && dayTime > 0 && !goalMet && (
-                    <div className="absolute inset-0 rounded-md sm:rounded-lg hidden sm:block">
-                      <svg className="w-full h-full transform -rotate-90">
-                        <circle
-                          cx="50%"
-                          cy="50%"
-                          r="45%"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="text-primary/20"
-                        />
-                        <circle
-                          cx="50%"
-                          cy="50%"
-                          r="45%"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeDasharray={`${2 * Math.PI * 45}%`}
-                          strokeDashoffset={`${2 * Math.PI * 45 * (1 - progressPercent / 100)}%`}
-                          className="text-primary transition-all duration-300"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+                    >
+                      {format(day, "d")}
+                    </span>
+                    {dayTime > 0 && (
+                      <div className="w-full flex flex-col items-center gap-0.5">
+                        {goalMet ? (
+                          <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-green-500" />
+                        ) : (
+                          <>
+                            <div
+                              className={cn(
+                                "w-full h-0.5 sm:h-1 rounded-full transition-all",
+                                getIntensity(dayTime)
+                              )}
+                            />
+                            <span className="text-[8px] sm:text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 transition-opacity hidden sm:block">
+                              {formatTimeShort(dayTime)}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {/* Progress indicator ring - hidden on mobile for better performance */}
+                    {dailyGoalMs > 0 && dayTime > 0 && !goalMet && (
+                      <div className="absolute inset-0 rounded-xl hidden sm:block">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle
+                            cx="50%"
+                            cy="50%"
+                            r="45%"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-primary/10"
+                          />
+                          <motion.circle
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: progressPercent / 100 }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            cx="50%"
+                            cy="50%"
+                            r="45%"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-primary"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div >
+          )
+        }
 
         {/* Week View */}
-        {calendarView === 'week' && (
-          <div className="grid grid-cols-7 gap-1 sm:gap-2 overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
-            {weekViewDays.map((day) => {
-              const dayKey = format(day, "yyyy-MM-dd");
-              const dayTime = timeByDay.get(dayKey) || 0;
-              const isSelected = selectedDate && isSameDay(day, selectedDate);
-              const isTodayDate = isToday(day);
-              const goalMet = dayTime >= dailyGoalMs;
-              const daySessions = sessions.filter(s =>
-                isSameDay(new Date(s.date), day)
-              );
+        {
+          calendarView === 'week' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-7 gap-4"
+            >
+              {weekViewDays.map((day) => {
+                const dayKey = format(day, "yyyy-MM-dd");
+                const dayTime = timeByDay.get(dayKey) || 0;
+                const isSelected = selectedDate && isSameDay(day, selectedDate);
+                const isTodayDate = isToday(day);
+                const goalMet = dayTime >= dailyGoalMs;
+                const progress = dailyGoalMs > 0 ? Math.min((dayTime / dailyGoalMs) * 100, 100) : 0;
 
-              return (
-                <div
-                  key={day.toISOString()}
-                  onClick={() => {
-                    setSelectedDate(isSelected ? null : day);
-                    setShowDayDetails(true);
-                  }}
-                  className={cn(
-                    "p-2 sm:p-3 rounded-lg border transition-all cursor-pointer min-h-[100px] sm:min-h-[120px] touch-manipulation active:scale-95",
-                    isSelected && "ring-2 ring-primary bg-primary/5",
-                    isTodayDate && !isSelected && "border-primary/50 bg-primary/5",
-                    goalMet && "bg-green-500/10 border-green-500/30",
-                    "hover:bg-secondary/30"
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-1 sm:mb-2">
-                    <span className={cn(
-                      "text-[10px] sm:text-xs font-medium",
-                      isTodayDate && "text-primary font-bold"
-                    )}>
-                      <span className="hidden sm:inline">{format(day, "EEE")}</span>
-                      <span className="sm:hidden">{format(day, "EEEEE")}</span>
+                return (
+                  <motion.div
+                    key={dayKey}
+                    whileHover={{ y: -5 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setSelectedDate(isSelected ? null : day);
+                      setShowDayDetails(true);
+                    }}
+                    className={cn(
+                      "flex flex-col items-center p-4 rounded-2xl border transition-all duration-300 cursor-pointer",
+                      isSelected ? "bg-primary/10 border-primary/40 shadow-lg shadow-primary/5" : "bg-secondary/10 border-transparent",
+                      isTodayDate && !isSelected && "border-primary/30",
+                      goalMet && "bg-green-500/5 border-green-500/20"
+                    )}
+                  >
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                      {format(day, "EEE")}
                     </span>
                     <span className={cn(
-                      "text-xs sm:text-sm font-semibold",
-                      isTodayDate && "text-primary"
+                      "text-lg font-bold mb-3 tracking-tight",
+                      isTodayDate ? "text-primary" : "text-foreground"
                     )}>
                       {format(day, "d")}
                     </span>
-                  </div>
-                  <div className="space-y-0.5 sm:space-y-1">
-                    {goalMet && (
-                      <div className="flex items-center gap-1 text-green-500 text-[10px] sm:text-xs">
-                        <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                        <span className="hidden sm:inline">Goal met</span>
-                        <span className="sm:hidden">✓</span>
-                      </div>
-                    )}
-                    <div className="text-[10px] sm:text-xs text-muted-foreground">
+                    <div className="w-full h-16 relative flex items-end justify-center bg-secondary/20 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${progress}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className={cn(
+                          "w-full rounded-t-full shadow-sm",
+                          goalMet ? "bg-green-500" : "bg-primary"
+                        )}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-muted-foreground/60 mt-2">
                       {formatTimeShort(dayTime)}
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-muted-foreground">
-                      {daySessions.length} {daySessions.length !== 1 ? 'sess' : 'sess'}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )
+        }
 
         {/* Day View */}
-        {calendarView === 'day' && dayViewDate && (
-          <div className="space-y-3 sm:space-y-4">
-            <div className="p-3 sm:p-4 rounded-lg border bg-gradient-to-br from-primary/10 to-accent/10">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-foreground truncate">
-                    {format(dayViewDate, "EEEE, MMMM d, yyyy")}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {isToday(dayViewDate) ? 'Today' : format(dayViewDate, "EEEE")}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedDate(dayViewDate);
-                    setShowDayDetails(true);
-                  }}
-                  className="w-full sm:w-auto text-xs sm:text-sm"
-                >
-                  View Details
-                </Button>
-              </div>
-              <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                <div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Total Time</p>
-                  <p className="text-base sm:text-xl font-bold text-foreground">
-                    {formatTime(timeByDay.get(format(dayViewDate, "yyyy-MM-dd")) || 0)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Sessions</p>
-                  <p className="text-base sm:text-xl font-bold text-foreground">
-                    {sessions.filter(s => isSameDay(new Date(s.date), dayViewDate)).length}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Goal Status</p>
-                  <p className={cn(
-                    "text-base sm:text-xl font-bold",
-                    (timeByDay.get(format(dayViewDate, "yyyy-MM-dd")) || 0) >= dailyGoalMs
-                      ? "text-green-500"
-                      : "text-muted-foreground"
-                  )}>
-                    {(timeByDay.get(format(dayViewDate, "yyyy-MM-dd")) || 0) >= dailyGoalMs ? '✓ Met' : 'Not Met'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-xs sm:text-sm font-semibold text-foreground">Activity Timeline</h4>
-              {activityTimeline.length > 0 ? (
-                <div className="space-y-2">
-                  {activityTimeline.map((activity, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-secondary/30 border"
-                    >
-                      <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs sm:text-sm font-medium truncate">{activity.name}</p>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground">
-                          {format(activity.time, "h:mm a")}
+        {
+          calendarView === 'day' && dayViewDate && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-8"
+            >
+              <div className="flex flex-col md:flex-row items-stretch gap-6">
+                <Card className="flex-1 p-8 rounded-[2.5rem] bg-primary/5 border border-primary/20 shadow-xl relative overflow-hidden group">
+                  <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <Calendar className="h-32 w-32 text-primary" />
+                  </div>
+                  <div className="relative z-10">
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Selected Day</p>
+                    <h3 className="text-3xl font-bold text-foreground tracking-tight mb-6">
+                      {format(dayViewDate, "EEEE, MMMM d, yyyy")}
+                    </h3>
+                    <div className="flex items-center gap-8">
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Total Time</p>
+                        <p className="text-3xl font-bold text-primary tracking-tight">
+                          {formatTime(timeByDay.get(format(dayViewDate, "yyyy-MM-dd")) || 0)}
                         </p>
                       </div>
-                      <span className="text-xs sm:text-sm font-mono flex-shrink-0">{formatTime(activity.duration)}</span>
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Sessions</p>
+                        <p className="text-3xl font-bold text-foreground tracking-tight">
+                          {sessions.filter(s => isSameDay(new Date(s.date), dayViewDate)).length}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">
-                  No activity recorded for this day
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+                  </div>
+                </Card>
+
+                <Card className="w-full md:w-80 p-8 rounded-[2.5rem] bg-card/50 backdrop-blur-xl border-border/50 shadow-xl flex flex-col justify-center items-center text-center">
+                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Goal Progress</h4>
+                  <div className="relative w-24 h-24 mb-4">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle
+                        cx="50%"
+                        cy="50%"
+                        r="40%"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="8"
+                        className="text-secondary"
+                      />
+                      <motion.circle
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: Math.min(((timeByDay.get(format(dayViewDate, "yyyy-MM-dd")) || 0) / dailyGoalMs), 1) }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        cx="50%"
+                        cy="50%"
+                        r="40%"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="8"
+                        className="text-primary"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xl font-bold text-foreground">
+                        {Math.round(Math.min(((timeByDay.get(format(dayViewDate, "yyyy-MM-dd")) || 0) / dailyGoalMs) * 100, 100))}%
+                      </span>
+                    </div>
+                  </div>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedDate(dayViewDate);
+                        setShowDayDetails(true);
+                      }}
+                      className="h-10 px-6 rounded-xl border-border/50 hover:bg-secondary/50 font-bold text-xs"
+                    >
+                      View Details
+                    </Button>
+                  </motion.div>
+                </Card>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-widest ml-2">Activity Timeline</h4>
+                {activityTimeline.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activityTimeline.map((activity, idx) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border/50 shadow-sm hover:shadow-md transition-all group"
+                      >
+                        <div className="p-2 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                          <Clock className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate">{activity.name}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                            {format(activity.time, "h:mm a")}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-mono font-bold text-primary">{formatTime(activity.duration)}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-12 rounded-[2.5rem] border-2 border-dashed border-border/50 bg-secondary/10 flex flex-col items-center justify-center text-center">
+                    <div className="p-4 rounded-full bg-secondary/30 mb-4">
+                      <Clock className="h-8 w-8 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-muted-foreground font-medium">No activity recorded for this day</p>
+                  </Card>
+                )}
+              </div>
+            </motion.div>
+          )
+        }
 
         {/* Legend and Heatmap */}
-        <div className="mt-6 space-y-4">
-          <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Check className="h-3 w-3 text-green-500" />
-              <span>Goal met</span>
+        <div className="mt-12 space-y-8">
+          <div className="flex flex-wrap items-center justify-center gap-6 p-4 rounded-2xl bg-secondary/10 border border-border/50">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-full bg-green-500/20">
+                <Check className="h-3 w-3 text-green-500" />
+              </div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Goal met</span>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-1.5 rounded-full bg-primary/60" />
-              <span>Activity</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-primary shadow-sm shadow-primary/20" />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Activity</span>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded border-2 border-primary/50" />
-              <span>Today</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-md border-2 border-primary/50" />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Today</span>
             </div>
           </div>
 
           {/* Activity Heatmap */}
           {calendarView === 'month' && (
-            <div className="pt-3 sm:pt-4 border-t border-border/50">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-2 sm:mb-3">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-                  <span className="text-xs sm:text-sm font-semibold text-foreground">Activity Heatmap</span>
+            <div className="pt-8 border-t border-border/50">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-primary/10">
+                    <Activity className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-sm font-bold text-foreground uppercase tracking-widest">Activity Heatmap</span>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
-                  <span className="hidden sm:inline">Less</span>
-                  <div className="flex gap-0.5 sm:gap-1">
+                <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  <span>Less</span>
+                  <div className="flex gap-1.5">
                     {[0, 1, 2, 3, 4].map((level) => (
                       <div
                         key={level}
                         className={cn(
-                          "w-2 h-2 sm:w-3 sm:h-3 rounded",
-                          level === 0 && "bg-secondary/30",
-                          level === 1 && "bg-primary/20",
-                          level === 2 && "bg-primary/40",
-                          level === 3 && "bg-primary/60",
-                          level === 4 && "bg-primary"
+                          "w-3 h-3 rounded-sm transition-all duration-300",
+                          level === 0 ? "bg-secondary/20" :
+                            level === 1 ? "bg-primary/20" :
+                              level === 2 ? "bg-primary/40" :
+                                level === 3 ? "bg-primary/70" :
+                                  "bg-primary"
                         )}
                       />
                     ))}
                   </div>
-                  <span className="hidden sm:inline">More</span>
+                  <span>More</span>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-0.5 sm:gap-1 max-h-24 sm:max-h-32 overflow-y-auto pb-2">
+              <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
                 {heatmapData.slice(-365).map((item, idx) => {
                   const intensity = maxTime > 0 ? Math.min((item.value / maxTime) * 4, 4) : 0;
                   return (
-                    <div
+                    <motion.div
                       key={idx}
+                      whileHover={{ scale: 1.5, zIndex: 10 }}
                       className={cn(
-                        "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded transition-all hover:scale-150 cursor-pointer border border-transparent hover:border-primary/50 touch-manipulation",
-                        intensity === 0 && "bg-secondary/30",
+                        "w-3 h-3 rounded-sm transition-all cursor-pointer border border-transparent hover:border-primary/50",
+                        intensity === 0 && "bg-secondary/20",
                         intensity > 0 && intensity <= 1 && "bg-primary/20",
                         intensity > 1 && intensity <= 2 && "bg-primary/40",
-                        intensity > 2 && intensity <= 3 && "bg-primary/60",
+                        intensity > 2 && intensity <= 3 && "bg-primary/70",
                         intensity > 3 && "bg-primary"
                       )}
                       title={`${format(new Date(item.date), "MMM d, yyyy")}: ${formatTime(item.value)}`}
@@ -1864,129 +2033,131 @@ export const CalendarProgress = ({
             </div>
           )}
         </div>
-      </Card>
+      </Card >
 
       {/* Selected Day Details - Enhanced with History Integration */}
-      {selectedDate && showDayDetails && (
-        <Card className="p-4 sm:p-6 animate-scale-in bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
-          <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                <h3 className="text-base sm:text-xl font-bold text-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
-                  {format(selectedDate, "EEEE, MMMM d, yyyy")}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={isToday(selectedDate) ? "default" : "outline"} className="text-xs">
-                  {isToday(selectedDate) ? 'Today' : format(selectedDate, "EEEE")}
-                </Badge>
-                {selectedDateSessions.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {selectedDateSessions.length} session{selectedDateSessions.length !== 1 ? 's' : ''}
+      {
+        selectedDate && showDayDetails && (
+          <Card className="p-4 sm:p-6 animate-scale-in bg-gradient-to-br from-card to-card/50 border-primary/20 shadow-lg">
+            <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                  <h3 className="text-base sm:text-xl font-bold text-foreground bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
+                    {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant={isToday(selectedDate) ? "default" : "outline"} className="text-xs">
+                    {isToday(selectedDate) ? 'Today' : format(selectedDate, "EEEE")}
                   </Badge>
-                )}
-                {(selectedDateSessions.reduce((acc, s) => acc + s.time, 0) >= dailyGoalMs) && (
-                  <Badge variant="default" className="text-xs bg-gradient-to-r from-green-500 to-emerald-500">
-                    <Check className="h-3 w-3 mr-1" />
-                    Goal Met
-                  </Badge>
-                )}
+                  {selectedDateSessions.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {selectedDateSessions.length} session{selectedDateSessions.length !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                  {(selectedDateSessions.reduce((acc, s) => acc + s.time, 0) >= dailyGoalMs) && (
+                    <Badge variant="default" className="text-xs bg-gradient-to-r from-green-500 to-emerald-500">
+                      <Check className="h-3 w-3 mr-1" />
+                      Goal Met
+                    </Badge>
+                  )}
+                </div>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowDayDetails(false);
+                  setSelectedDate(null);
+                }}
+                className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setShowDayDetails(false);
-                setSelectedDate(null);
-              }}
-              className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
 
-          {selectedDateSessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <CalendarDays className="h-12 w-12 text-muted-foreground mb-3 opacity-50" />
-              <p className="text-muted-foreground font-medium">No sessions recorded</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Start tracking time to see sessions here
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                <div className="p-2 sm:p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Total Time</p>
-                  <p className="text-sm sm:text-lg font-bold text-primary">
-                    {formatTime(
-                      selectedDateSessions.reduce((acc, s) => acc + s.time, 0)
-                    )}
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 rounded-lg bg-accent/10 border border-accent/20">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Sessions</p>
-                  <p className="text-sm sm:text-lg font-bold text-accent">
-                    {selectedDateSessions.length}
-                  </p>
-                </div>
-                <div className={cn(
-                  "p-2 sm:p-3 rounded-lg border",
-                  (selectedDateSessions.reduce((acc, s) => acc + s.time, 0) >= dailyGoalMs)
-                    ? "bg-green-500/10 border-green-500/20"
-                    : "bg-secondary/30 border-border/30"
-                )}>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Goal Status</p>
-                  <p className={cn(
-                    "text-sm sm:text-lg font-bold",
+            {selectedDateSessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <CalendarDays className="h-12 w-12 text-muted-foreground mb-3 opacity-50" />
+                <p className="text-muted-foreground font-medium">No sessions recorded</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Start tracking time to see sessions here
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="p-2 sm:p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Total Time</p>
+                    <p className="text-sm sm:text-lg font-bold text-primary">
+                      {formatTime(
+                        selectedDateSessions.reduce((acc, s) => acc + s.time, 0)
+                      )}
+                    </p>
+                  </div>
+                  <div className="p-2 sm:p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Sessions</p>
+                    <p className="text-sm sm:text-lg font-bold text-accent">
+                      {selectedDateSessions.length}
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "p-2 sm:p-3 rounded-lg border",
                     (selectedDateSessions.reduce((acc, s) => acc + s.time, 0) >= dailyGoalMs)
-                      ? "text-green-500"
-                      : "text-muted-foreground"
+                      ? "bg-green-500/10 border-green-500/20"
+                      : "bg-secondary/30 border-border/30"
                   )}>
-                    {(selectedDateSessions.reduce((acc, s) => acc + s.time, 0) >= dailyGoalMs) ? '✓ Met' : 'Not Met'}
-                  </p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Goal Status</p>
+                    <p className={cn(
+                      "text-sm sm:text-lg font-bold",
+                      (selectedDateSessions.reduce((acc, s) => acc + s.time, 0) >= dailyGoalMs)
+                        ? "text-green-500"
+                        : "text-muted-foreground"
+                    )}>
+                      {(selectedDateSessions.reduce((acc, s) => acc + s.time, 0) >= dailyGoalMs) ? '✓ Met' : 'Not Met'}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Timeline */}
-              <div>
-                <h4 className="text-xs sm:text-sm font-semibold text-foreground mb-2 sm:mb-3 flex items-center gap-2">
-                  <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-                  Activity Timeline
-                </h4>
-                <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
-                  {selectedDateSessions.map((session, idx) => (
-                    <div
-                      key={session.id}
-                      className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-secondary/30 border border-border/30 hover:bg-secondary/50 transition-colors group"
-                    >
-                      <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-[10px] sm:text-xs font-bold text-primary">{idx + 1}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {session.name && (
-                          <p className="text-xs sm:text-sm font-medium text-foreground truncate">
-                            {session.name}
+                {/* Timeline */}
+                <div>
+                  <h4 className="text-xs sm:text-sm font-semibold text-foreground mb-2 sm:mb-3 flex items-center gap-2">
+                    <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+                    Activity Timeline
+                  </h4>
+                  <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
+                    {selectedDateSessions.map((session, idx) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-secondary/30 border border-border/30 hover:bg-secondary/50 transition-colors group"
+                      >
+                        <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-[10px] sm:text-xs font-bold text-primary">{idx + 1}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {session.name && (
+                            <p className="text-xs sm:text-sm font-medium text-foreground truncate">
+                              {session.name}
+                            </p>
+                          )}
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">
+                            {format(new Date(session.date), "h:mm a")}
                           </p>
-                        )}
-                        <p className="text-[10px] sm:text-xs text-muted-foreground">
-                          {format(new Date(session.date), "h:mm a")}
-                        </p>
+                        </div>
+                        <span className="font-mono text-xs sm:text-sm font-semibold text-foreground flex-shrink-0">
+                          {formatTime(session.time)}
+                        </span>
                       </div>
-                      <span className="font-mono text-xs sm:text-sm font-semibold text-foreground flex-shrink-0">
-                        {formatTime(session.time)}
-                      </span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </Card>
-      )}
-    </div>
+            )}
+          </Card>
+        )
+      }
+    </motion.div>
   );
 };
