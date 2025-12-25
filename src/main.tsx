@@ -3,6 +3,12 @@ import App from "./App.tsx";
 import "./index.css";
 
 console.log("=== MAIN.TSX STARTED ===");
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+        console.log("Active Service Workers:", registrations.length);
+        registrations.forEach(r => console.log("SW Scope:", r.scope));
+    });
+}
 
 const rootElement = document.getElementById("root");
 console.log("Root element:", rootElement);

@@ -79,11 +79,11 @@ define(['./workbox-6fc00345'], (function (workbox) { 'use strict';
    * See https://goo.gl/S9QRab
    */
   workbox.precacheAndRoute([{
-    "url": "/",
-    "revision": "0.4pkavukq6sg"
+    "url": "/stopwatch/index.html",
+    "revision": "0.va3puqjh5hg"
   }], {});
   workbox.cleanupOutdatedCaches();
-  workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/"), {
+  workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/stopwatch/index.html"), {
     allowlist: [/^\/$/],
     denylist: [/^\/api/]
   }));

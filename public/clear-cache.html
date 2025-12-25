@@ -1,78 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Clearing Service Worker Cache...</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Cache & Reset</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            padding: 40px;
-            background: #f0f0f0;
+            font-family: system-ui, sans-serif;
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        button {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            opacity: 0.9;
         }
 
         .status {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .success {
-            color: green;
-        }
-
-        .error {
-            color: red;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f5f5f5;
+            border-radius: 6px;
+            white-space: pre-wrap;
         }
     </style>
 </head>
 
 <body>
-    <div class="status">
-        <h1>Clearing Cache and Service Workers...</h1>
-        <div id="status">Please wait...</div>
-    </div>
+    <h1>Clear Cache & Reset</h1>
+    <p>If you are experiencing issues with the app (blank page, 404 errors), click the button below to unregister the
+        Service Worker and clear the cache.</p>
+
+    <button onclick="clearCache()">Clear Cache & Reload</button>
+
+    <div id="status" class="status">Waiting...</div>
 
     <script>
-        async function clearEverything() {
+        async function clearCache() {
             const status = document.getElementById('status');
+            status.textContent = 'Starting cleanup...';
 
             try {
-                // Unregister ALL service workers
+                // 1. Unregister Service Workers
                 if ('serviceWorker' in navigator) {
                     const registrations = await navigator.serviceWorker.getRegistrations();
-                    status.innerHTML += '<p>Found ' + registrations.length + ' service workers</p>';
-
                     for (const registration of registrations) {
                         await registration.unregister();
-                        status.innerHTML += '<p class="success">✓ Unregistered service worker</p>';
+                        status.textContent += `\nUnregistered SW: ${registration.scope}`;
+                    }
+                    if (registrations.length === 0) {
+                        status.textContent += '\nNo Service Workers found.';
                     }
                 }
 
-                // Clear all caches
+                // 2. Clear Caches
                 if ('caches' in window) {
-                    const cacheNames = await caches.keys();
-                    status.innerHTML += '<p>Found ' + cacheNames.length + ' caches</p>';
-
-                    for (const name of cacheNames) {
-                        await caches.delete(name);
-                        status.innerHTML += '<p class="success">✓ Deleted cache: ' + name + '</p>';
+                    const keys = await caches.keys();
+                    for (const key of keys) {
+                        await caches.delete(key);
+                        status.textContent += `\nDeleted cache: ${key}`;
                     }
                 }
 
-                status.innerHTML += '<h2 class="success">SUCCESS! All caches cleared!</h2>';
-                status.innerHTML += '<p>Redirecting to fresh page in 2 seconds...</p>';
+                status.textContent += '\n\nDone! Redirecting to app in 3 seconds...';
 
                 setTimeout(() => {
-                    window.location.href = '/?nocache=' + Date.now();
-                }, 2000);
+                    window.location.href = '/stopwatch/';
+                }, 3000);
 
             } catch (error) {
-                status.innerHTML += '<p class="error">Error: ' + error.message + '</p>';
+                status.textContent += `\nError: ${error.message}`;
+                console.error(error);
             }
         }
-
-        clearEverything();
     </script>
 </body>
 
