@@ -29,8 +29,8 @@ export default defineConfig(({ mode }) => ({
         background_color: "#000000",
         display: "standalone",
         orientation: "any",
-        scope: "/",
-        start_url: "/",
+        scope: "/stopwatch/",
+        start_url: "/stopwatch/",
         icons: [
           {
             src: "/icon-192.png",
@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: mode === "development" ? [] : ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-        navigateFallback: "/",
+        navigateFallback: "/stopwatch/index.html",
         navigateFallbackDenylist: [/^\/api/],
         importScripts: ['/sw-custom.js'],
         runtimeCaching: [
