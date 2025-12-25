@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0",
     port: 8080,
   },
+  base: "/stopwatch/",
   plugins: [
     react(),
     mode === "development" && componentTagger(),

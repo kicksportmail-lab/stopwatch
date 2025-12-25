@@ -60,7 +60,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename="/stopwatch">
         <AnimatedRoutes />
       </BrowserRouter>
     </TooltipProvider>
