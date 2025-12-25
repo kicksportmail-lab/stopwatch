@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => ({
         globPatterns: mode === "development" ? [] : ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         navigateFallback: "/stopwatch/index.html",
         navigateFallbackDenylist: [/^\/api/],
-        importScripts: ['/sw-custom.js'],
+        importScripts: ['/stopwatch/sw-custom.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,

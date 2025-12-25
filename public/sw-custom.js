@@ -9,7 +9,7 @@ function formatTime(ms) {
   const hours = Math.floor(ms / 3600000);
   const minutes = Math.floor((ms % 3600000) / 60000);
   const seconds = Math.floor((ms % 60000) / 1000);
-  
+
   return {
     hours: hours.toString().padStart(2, "0"),
     minutes: minutes.toString().padStart(2, "0"),
@@ -21,12 +21,12 @@ function formatTime(ms) {
 async function showStopwatchNotification(timeMs) {
   const { hours, minutes, seconds } = formatTime(timeMs);
   const timeString = `${hours}:${minutes}:${seconds}`;
-  
+
   try {
     await self.registration.showNotification('Stopwatch Running', {
       body: `Elapsed: ${timeString}`,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      icon: '/stopwatch/icon-192.png',
+      badge: '/stopwatch/icon-192.png',
       tag: 'stopwatch-persistent',
       silent: true,
       requireInteraction: true,
@@ -44,24 +44,24 @@ async function showStopwatchNotification(timeMs) {
 // Handle messages from main thread
 self.addEventListener('message', (event) => {
   const { type, time, running, startTimestamp, accumulatedTime } = event.data;
-  
+
   if (type === 'STOPWATCH_UPDATE') {
     isRunning = running;
-    
+
     if (running) {
       // Calculate current time based on start timestamp
       const startTs = startTimestamp || Date.now();
       const accumulated = accumulatedTime || 0;
-      
+
       // Clear existing interval
       if (notificationInterval) {
         clearInterval(notificationInterval);
       }
-      
+
       // Show immediate notification
       const currentTimeMs = accumulated + (Date.now() - startTs);
       showStopwatchNotification(currentTimeMs);
-      
+
       // Update notification every 1 second
       notificationInterval = setInterval(() => {
         const updatedTime = accumulated + (Date.now() - startTs);
@@ -79,7 +79,7 @@ self.addEventListener('message', (event) => {
       });
     }
   }
-  
+
   if (type === 'STOP_NOTIFICATIONS') {
     if (notificationInterval) {
       clearInterval(notificationInterval);
@@ -94,7 +94,7 @@ self.addEventListener('message', (event) => {
 // Handle notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
+
   if (event.action === 'stop') {
     // Broadcast stop message to all clients
     self.clients.matchAll({ type: 'window' }).then(clients => {
@@ -102,7 +102,7 @@ self.addEventListener('notificationclick', (event) => {
         client.postMessage({ type: 'STOP_STOPWATCH' });
       });
     });
-    
+
     // Stop notification updates
     if (notificationInterval) {
       clearInterval(notificationInterval);
