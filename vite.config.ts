@@ -39,13 +39,13 @@ export default defineConfig(({ mode }) => ({
 
         icons: [
           {
-            src: "icon-192.png",
+            src: "/stopwatch/icon-192.png",
             sizes: "192x192",
             type: "image/png",
             purpose: "any maskable",
           },
           {
-            src: "icon-512.png",
+            src: "/stopwatch/icon-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any maskable",
@@ -56,9 +56,14 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         // ✅ Fix blank page on refresh
         navigateFallback: "/stopwatch/index.html",
-<<<<<<< HEAD
         navigateFallbackDenylist: [/^\/api/],
+
+        // ✅ Correct asset caching
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+
+        // ✅ Required for custom notifications
         importScripts: ['/stopwatch/sw-custom.js'],
+
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
@@ -78,16 +83,6 @@ export default defineConfig(({ mode }) => ({
         ]
       }
     })
-=======
-
-        // ✅ Correct asset caching
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-
-        // ❌ REMOVED absolute root path (caused 404)
-        // importScripts: ['/sw-custom.js']
-      },
-    }),
->>>>>>> c2ab82100253200ae3aafb2a564f62c8de542696
   ].filter(Boolean),
 
   resolve: {
@@ -96,4 +91,3 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
-
